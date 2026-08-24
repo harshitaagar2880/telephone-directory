@@ -22,7 +22,7 @@ A simple **Telephone Directory desktop application** built with **Python and Tki
 ### Clone the repository
 
 ```bash
-git clone https://github.com/your-username/your-repository.git
+git clone https://github.com/harshitaagar2880/telephone-directory
 cd your-repository
 ```
 
