@@ -12,15 +12,19 @@ Builds the sidebar navigation and manages page switching across:
 """
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
-from gui.theme import COLORS, FONTS, apply_treeview_style
+from gui.theme import COLORS, FONTS, apply_treeview_style, get_current_theme, get_current_accent, apply_theme, set_accent_color
 from gui.pages.dashboard_page import DashboardPage
 from gui.pages.contacts_page  import ContactsPage
 from gui.pages.favourites_page import FavouritesPage
 from gui.pages.emergency_page import EmergencyPage
 from gui.pages.groups_page    import GroupsPage
 from gui.pages.data_page      import DataPage
+from gui.pages.speed_dial_page import SpeedDialPage
+from gui.pages.trash_page import TrashPage
+
+from services.contact_service import get_setting, set_setting
 
 
 class AppWindow(tk.Tk):
@@ -29,7 +33,7 @@ class AppWindow(tk.Tk):
     """
 
     APP_TITLE   = "Smart Contact Manager"
-    APP_VERSION = "3.0"
+    APP_VERSION = "4.0"
     MIN_WIDTH   = 1080
     MIN_HEIGHT  = 660
 
@@ -40,6 +44,15 @@ class AppWindow(tk.Tk):
         self.title(f"{self.APP_TITLE}  v{self.APP_VERSION}")
         self.minsize(self.MIN_WIDTH, self.MIN_HEIGHT)
         self.geometry("1180x720")
+        self.configure(bg=COLORS["sidebar_bg"])
+
+        # Load saved theme & accent from settings
+        saved_theme = get_setting("theme", "light")
+        saved_accent = get_setting("accent", "blue")
+        apply_theme(saved_theme)
+        set_accent_color(saved_accent)
+
+        # Re-configure root background after theme load
         self.configure(bg=COLORS["sidebar_bg"])
 
         # Center on screen
@@ -106,9 +119,38 @@ class AppWindow(tk.Tk):
         self._nav_frame = tk.Frame(self._sidebar, bg=COLORS["sidebar_bg"])
         self._nav_frame.pack(fill="x")
 
+        # Theme toggle section (separator + button)
+        theme_sep = tk.Frame(self._sidebar, bg=COLORS["sidebar_hover"], height=1)
+        theme_sep.pack(fill="x", padx=15, pady=(10, 5))
+
+        tk.Label(
+            self._sidebar, text="APPEARANCE",
+            font=FONTS["small_bold"], fg=COLORS["sidebar_icon"],
+            bg=COLORS["sidebar_bg"]
+        ).pack(anchor="w", padx=18, pady=(5, 5))
+
+        self._theme_btn = tk.Button(
+            self._sidebar,
+            text="🌓 Switch Theme",
+            font=FONTS["body"],
+            fg=COLORS["sidebar_text"],
+            bg=COLORS["sidebar_bg"],
+            activebackground=COLORS["sidebar_hover"],
+            activeforeground=COLORS["sidebar_text"],
+            relief="flat", bd=0,
+            anchor="w", padx=18, pady=9,
+            cursor="hand2",
+            command=self._toggle_theme
+        )
+        self._theme_btn.pack(fill="x")
+        self._theme_btn.bind("<Enter>",
+            lambda e: self._theme_btn.config(bg=COLORS["sidebar_hover"]))
+        self._theme_btn.bind("<Leave>",
+            lambda e: self._theme_btn.config(bg=COLORS["sidebar_bg"]))
+
         # Version label at the bottom
         tk.Label(
-            self._sidebar, text=f"v{self.APP_VERSION} (Part 3)",
+            self._sidebar, text=f"v{self.APP_VERSION} (Part 4)",
             font=FONTS["small"], fg=COLORS["sidebar_icon"],
             bg=COLORS["sidebar_bg"]
         ).pack(side="bottom", pady=10)
@@ -126,9 +168,11 @@ class AppWindow(tk.Tk):
         nav_items = [
             ("dashboard",  "🏠  Dashboard",     DashboardPage),
             ("contacts",   "👤  All Contacts",   ContactsPage),
+            ("speed_dial", "⚡  Speed Dial",    SpeedDialPage),
             ("favourites", "⭐  Favourites",     FavouritesPage),
             ("emergency",  "🚨  Emergency",      EmergencyPage),
             ("groups",     "📁  Groups",         GroupsPage),
+            ("trash",      "🗑️  Trash",         TrashPage),
             ("data",       "💾  Backup & Data",  DataPage),
         ]
 
@@ -193,3 +237,25 @@ class AppWindow(tk.Tk):
         for page in self._pages.values():
             if hasattr(page, "refresh"):
                 page.refresh()
+
+    # ------------------------------------------------------------------
+    # Theme switching
+    # ------------------------------------------------------------------
+
+    def _toggle_theme(self):
+        """Switch between light and dark theme and persist the choice."""
+        current = get_current_theme()
+        new_theme = "dark" if current == "light" else "light"
+        apply_theme(new_theme)
+        set_setting("theme", new_theme)
+
+        # Update root and sidebar background
+        self.configure(bg=COLORS["sidebar_bg"])
+        self._sidebar.configure(bg=COLORS["sidebar_bg"])
+
+        # Re-apply ttk styles with new colors
+        style = ttk.Style(self)
+        apply_treeview_style(style)
+
+        # Refresh all pages so they redraw with new colors
+        self._refresh_all_pages()

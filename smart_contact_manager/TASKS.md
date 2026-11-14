@@ -56,9 +56,34 @@
 - [x] Testing: Comprehensive automated test suite (`test_suite.py`) expanded to 15 modules covering all Part 1, Part 2, and Part 3 features
 - [x] Documentation: Updated README.md, PROJECT_PLAN.md, TASKS.md, and HANDOFF.md
 
-## Part 4 Tasks (PENDING)
+## Part 4 Tasks — Search and Quick Access (COMPLETED)
+
+- [x] Advanced contact search
+- [x] Sorting and filtering
+- [x] Recently viewed contacts
+- [x] Duplicate contact detection
+- [x] Speed Dial
+
+### Part 4A — Themes and Personalization (COMPLETED)
+- [x] Light theme (`gui/theme.py` — LIGHT_COLORS palette)
+- [x] Dark theme (`gui/theme.py` — DARK_COLORS palette)
+- [x] Accent colour options: blue, green, purple, orange, red, teal (`ACCENT_COLORS`)
+- [x] Consistent theme application across all pages, buttons, forms, navigation and dialogs
+- [x] Save selected theme and accent colour in local settings (`settings` table)
+- [x] Restore user's selected appearance after restart (`app_window.py` loads settings on startup)
+- [x] Easy way to switch themes: 🌓 "Switch Theme" button in sidebar
+
+### Part 4B — Recycle Bin / Trash (COMPLETED)
+- [x] Soft-delete: Deleting a contact moves it to Trash instead of permanent deletion
+- [x] Dedicated Trash page (`gui/pages/trash_page.py`)
+- [x] Restore deleted contacts with all original details, phones, groups, favourite/emergency status
+- [x] Permanent deletion with confirmation (`purge_contact`)
+- [x] Related phone numbers and group memberships preserved safely
+- [x] Duplicate conflict handling when restoring contacts
+- [x] Sidebar navigation item: "🗑️ Trash"
+
+### Part 4C — Future Optional Improvements (NOT STARTED)
 - [ ] Profile photo upload & avatar display
 - [ ] Birthday / anniversary reminders
-- [ ] Light / Dark theme toggle
 - [ ] Keyboard shortcuts
 - [ ] Fuzzy search matching

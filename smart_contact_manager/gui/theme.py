@@ -2,13 +2,16 @@
 gui/theme.py
 ------------
 Centralised colour palette, fonts and widget style definitions.
+Supports Light / Dark themes and accent colour options.
 Import COLORS and FONTS in every GUI module for consistent styling.
+Call apply_theme("light"|"dark") and set_accent_color(hex) to change appearance.
 """
 
 # ---------------------------------------------------------------------------
-# Colour palette
+# Colour palettes — Light (default) and Dark
 # ---------------------------------------------------------------------------
-COLORS = {
+
+LIGHT_COLORS = {
     # Sidebar
     "sidebar_bg":      "#1E2A3A",
     "sidebar_hover":   "#2C3E55",
@@ -61,6 +64,127 @@ COLORS = {
     "favourite":       "#F39C12",
     "emergency":       "#E74C3C",
 }
+
+DARK_COLORS = {
+    # Sidebar
+    "sidebar_bg":      "#2C3E50",
+    "sidebar_hover":   "#34495E",
+    "sidebar_active":  "#3498DB",
+    "sidebar_text":    "#ECF0F1",
+    "sidebar_icon":    "#95A5A6",
+
+    # Main area
+    "main_bg":         "#1A1A2E",
+    "card_bg":         "#16213E",
+    "card_border":     "#0F3460",
+
+    # Header / title bar
+    "header_bg":       "#16213E",
+    "header_border":   "#0F3460",
+
+    # Accent
+    "primary":         "#3498DB",
+    "primary_hover":   "#2980B9",
+    "primary_light":   "#2C3E50",
+
+    "success":         "#2ECC71",
+    "success_light":   "#1B4332",
+    "danger":          "#E74C3C",
+    "danger_hover":    "#C0392B",
+    "danger_light":    "#4A1A1A",
+    "warning":         "#F39C12",
+    "warning_light":   "#6B4226",
+
+    # Text
+    "text_primary":    "#ECF0F1",
+    "text_secondary":  "#95A5A6",
+    "text_muted":      "#7F8C8D",
+    "text_on_accent":  "#FFFFFF",
+
+    # Inputs
+    "input_bg":        "#0F3460",
+    "input_border":    "#1A1A2E",
+    "input_focus":     "#3498DB",
+
+    # Treeview
+    "tree_header":     "#34495E",
+    "tree_header_fg":  "#ECF0F1",
+    "tree_odd":        "#16213E",
+    "tree_even":       "#1F2A44",
+    "tree_selected":   "#3498DB",
+    "tree_selected_fg":"#FFFFFF",
+
+    # Favourite / Emergency badges
+    "favourite":       "#F39C12",
+    "emergency":       "#E74C3C",
+}
+
+# Accent colour options (overrides the "primary" accent)
+ACCENT_COLORS = {
+    "blue":   "#2980B9",
+    "green":  "#27AE60",
+    "purple": "#8E44AD",
+    "orange": "#E67E22",
+    "red":    "#E74C3C",
+    "teal":   "#1ABC9C",
+}
+
+# ---------------------------------------------------------------------------
+# Current theme state
+# ---------------------------------------------------------------------------
+
+_CURRENT_THEME = "light"   # "light" or "dark"
+_CURRENT_ACCENT = "blue"   # key into ACCENT_COLORS
+
+COLORS = dict(LIGHT_COLORS)  # active palette (mutable, updated by apply_theme)
+
+
+def get_current_theme() -> str:
+    """Return the current theme name: 'light' or 'dark'."""
+    return _CURRENT_THEME
+
+
+def get_current_accent() -> str:
+    """Return the current accent color key."""
+    return _CURRENT_ACCENT
+
+
+def apply_theme(theme_name: str) -> None:
+    """
+    Switch the active colour palette in place.
+    theme_name: "light" or "dark".
+    All modules that imported COLORS will see the update because they reference
+    the same dict object.
+    """
+    global _CURRENT_THEME, COLORS
+    theme_name = theme_name.lower()
+    if theme_name not in ("light", "dark"):
+        theme_name = "light"
+    _CURRENT_THEME = theme_name
+    base = LIGHT_COLORS if theme_name == "light" else DARK_COLORS
+    COLORS.clear()
+    COLORS.update(base)
+    # Re-apply the saved accent colour on top of the base palette
+    accent_hex = ACCENT_COLORS.get(_CURRENT_ACCENT, ACCENT_COLORS["blue"])
+    COLORS["primary"] = accent_hex
+    COLORS["primary_hover"] = accent_hex
+    COLORS["input_focus"] = accent_hex
+    COLORS["tree_selected"] = accent_hex
+
+
+def set_accent_color(accent_key: str) -> None:
+    """
+    Change the accent colour used for primary buttons, selection, focus, etc.
+    accent_key: one of ACCENT_COLORS keys (blue, green, purple, orange, red, teal).
+    """
+    global _CURRENT_ACCENT, COLORS
+    if accent_key not in ACCENT_COLORS:
+        accent_key = "blue"
+    _CURRENT_ACCENT = accent_key
+    COLORS["primary"] = ACCENT_COLORS[accent_key]
+    COLORS["primary_hover"] = ACCENT_COLORS[accent_key]
+    COLORS["input_focus"] = ACCENT_COLORS[accent_key]
+    COLORS["tree_selected"] = ACCENT_COLORS[accent_key]
 
 # ---------------------------------------------------------------------------
 # Font definitions   (family, size, weight)

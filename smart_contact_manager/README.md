@@ -7,7 +7,7 @@ A modern, offline-first desktop contact management system built with Python, Tki
 ## ✨ Features
 
 ### Part 1 — Foundation & Core CRUD
-- **Add, View, Edit, and Delete Contacts** with confirmation dialogs.
+- **Add, View, Edit, and Delete Contacts** with confirmation dialogs. Deleted contacts are moved to the **Trash (Recycle Bin)** where they can be restored or permanently deleted.
 - **SQLite Database** storing all data locally with parameterized queries.
 - **Search System** providing real-time filtering across names, emails, and phone numbers.
 - **Input Validation** enforcing regex checks for phone formats and email addresses.
@@ -39,8 +39,9 @@ A modern, offline-first desktop contact management system built with Python, Tki
   - Add or remove contacts to/from groups with dialog pickers.
   - **Safe Deletion:** Deleting a group never deletes the contacts inside it.
 - **Dashboard Enhancements:**
-  - 4 Live stat cards: Total Contacts, Favourites ⭐, Emergency 🚨, Contact Groups 📁.
+  - 5 Live stat cards: Total Contacts, Favourites ⭐, Emergency 🚨, Contact Groups 📁, Speed Dial ⚡.
   - Recently Added / Updated contacts list with double-click to view/edit.
+  - **Recently Viewed** tab showing contacts viewed most recently.
 
 ### Part 3 — Data Import, Export & Backup
 - **CSV Contact Export:**
@@ -65,6 +66,32 @@ A modern, offline-first desktop contact management system built with Python, Tki
 
 ---
 
+### Part 4 — Polish & Advanced Features
+
+#### Part 4A — Themes and Personalization (✅ Implemented)
+- **Light Theme:** Clean light colour palette (default).
+- **Dark Theme:** Easy-on-the-eyes dark colour palette.
+- **Accent Colour Options:** 6 choices — Blue, Green, Purple, Orange, Red, Teal.
+- **Consistent Application:** Themes apply across all pages, buttons, forms, navigation, and dialogs.
+- **Persistence:** Selected theme and accent colour are saved in the local `settings` table and restored on application restart.
+- **Easy Switching:** 🌓 "Switch Theme" button in the sidebar for instant theme changes.
+
+#### Part 4B — Recycle Bin / Trash (✅ Implemented)
+- **Soft Delete:** Deleting a contact moves it to the Trash instead of permanent deletion.
+- **Dedicated Trash Page:** View all trashed contacts with a dedicated sidebar entry ("🗑️ Trash").
+- **Restore:** Restore deleted contacts with all original details, phone numbers, favourite/emergency status, and group memberships intact.
+- **Permanent Delete:** Permanently remove a contact from Trash with confirmation dialog.
+- **Data Safety:** Related phone numbers and group memberships are preserved during soft-delete.
+- **Duplicate Conflict Handling:** When restoring, if a contact with the same name and phone already exists, the user is prompted to confirm.
+
+#### Part 4C — Future Optional Improvements (Not Started)
+- Profile photo upload & avatar display
+- Birthday / anniversary reminders
+- Keyboard shortcuts
+- Fuzzy search matching
+
+---
+
 ## 🚀 How to Run
 
 1. Open your terminal or Command Prompt.
@@ -83,7 +110,7 @@ A modern, offline-first desktop contact management system built with Python, Tki
 
 ## 🧪 Running Automated Tests
 
-To run the automated verification test suite covering all 15 modules:
+To run the automated verification test suite covering all 19 modules:
 ```bash
 cd smart_contact_manager
 python test_suite.py
@@ -96,7 +123,7 @@ python test_suite.py
 ```
 smart_contact_manager/
 ├── main.py                     # Entry point
-├── test_suite.py               # Comprehensive 15-module automated test suite
+├── test_suite.py               # Comprehensive 19-module automated test suite
 ├── contacts.db                 # SQLite database (auto-initialized & seeded)
 ├── _pre_restore_backup/        # Automatic pre-restore safety snapshots
 ├── requirements.txt            # Dependency specification
@@ -113,16 +140,18 @@ smart_contact_manager/
 │   ├── contact_service.py      # Business logic, validation, group & phone orchestration
 │   └── data_service.py         # CSV export/import, SQLite backup/restore
 ├── gui/
-│   ├── app_window.py           # Root window with 6-item sidebar navigation
-│   ├── theme.py                # Visual styling, colors, typography, clam ttk theme
+│   ├── app_window.py           # Root window with 8-item sidebar navigation
+│   ├── theme.py                # Visual styling, Light/Dark themes, accent colours
 │   ├── widgets.py              # Reusable LabelledEntry, StatCard, styled buttons
 │   ├── contact_form.py         # Modal form with dynamic phone rows & group checkboxes
 │   └── pages/
-│       ├── dashboard_page.py   # Dashboard with 4 stat cards & recent contacts
+│       ├── dashboard_page.py   # Dashboard with 5 stat cards & recent contacts tabs
 │       ├── contacts_page.py    # All contacts list, search, filters, detail panel, quick export/import
+│       ├── speed_dial_page.py  # Dedicated Speed Dial page (slots 1-9)
 │       ├── favourites_page.py  # Dedicated favourites page
 │       ├── emergency_page.py   # Dedicated emergency page
 │       ├── groups_page.py      # Dedicated group management page
+│       ├── trash_page.py       # Trash / Recycle Bin: restore or permanently delete
 │       └── data_page.py        # Dedicated Backup & Data page
 └── assets/                     # Icons & resources
 ```

@@ -1,8 +1,8 @@
 # HANDOFF.md — Smart Contact Manager
 
 > **For the next AI agent continuing this project.**
-> Read this file first. Parts 1, 2, and 3 are fully completed, tested, and operational.
-> Do NOT rewrite or modify working features. Follow the exact next steps for Part 4.
+> Read this file first. Parts 1, 2, 3, and 4 are fully completed, tested, and operational.
+> Do NOT rewrite or modify working features. Follow the guidelines below for any future work.
 
 ---
 
@@ -16,7 +16,7 @@
 - Platform: Windows 10/11 offline desktop application
 
 **Entry point:** `python main.py` (run from `smart_contact_manager/`)
-**Automated test runner:** `python test_suite.py` (runs all 15 integration test modules)
+**Automated test runner:** `python test_suite.py` (runs all 19 integration test modules)
 
 ---
 
@@ -54,17 +54,19 @@ Contacts/                           ← Root project folder
     │   └── data_service.py         ← CSV export, CSV import, SQLite backup, SQLite restore
     ├── gui/
     │   ├── __init__.py
-    │   ├── app_window.py           ← Root Tk window + 6-item sidebar navigation
-    │   ├── theme.py                ← Visual styling, colors, typography, clam ttk theme
+    │   ├── app_window.py           ← Root Tk window + 8-item sidebar navigation
+    │   ├── theme.py                ← Visual styling, Light/Dark themes, accent colours
     │   ├── widgets.py              ← LabelledEntry, LabelledText, make_button, StatCard
     │   ├── contact_form.py         ← Modal form with dynamic phone rows & group checkboxes
     │   └── pages/
     │       ├── __init__.py
-    │       ├── dashboard_page.py   ← 4 Stat cards + Recently added/updated contacts list
+    │       ├── dashboard_page.py   ← 5 Stat cards + Recently added/updated & Recently Viewed tabs
     │       ├── contacts_page.py    ← All contacts list, search, filters, detail panel, quick export/import
     │       ├── favourites_page.py  ← Dedicated favourites page with instant unfavourite
     │       ├── emergency_page.py   ← Dedicated emergency page with dial-ready phone display
     │       ├── groups_page.py      ← Dedicated custom groups management + group members
+    │       ├── speed_dial_page.py  ← Dedicated Speed Dial page (slots 1-9)
+    │       ├── trash_page.py       ← Trash / Recycle Bin: restore or permanently delete
     │       └── data_page.py        ← Dedicated Backup & Data page (CSV & SQLite tools)
     └── assets/                     ← Assets folder for future icons/images
 ```
@@ -115,9 +117,25 @@ All foreign keys use `ON DELETE CASCADE`. Foreign key constraints are enforced w
 
 *Deletion safety:* When a group is deleted, only records in `contact_groups` are cascade-deleted. Contacts in the `contacts` table remain intact.
 
+### 5. Table: `contacts` — Soft-Delete Columns (Part 4B)
+| Column | Type    | Constraints             | Description                           |
+|--------|---------|-------------------------|---------------------------------------|
+| is_deleted | INTEGER | DEFAULT 0              | 0 = active, 1 = moved to Trash       |
+| deleted_at | TEXT    | DEFAULT NULL            | Timestamp when contact was trashed   |
+
+*Soft-delete behaviour:* Deleting a contact sets `is_deleted = 1` instead of removing the row. Related `phone_numbers` and `contact_groups` are preserved. Use `restore_contact()` to un-delete or `purge_contact()` for permanent removal.
+
+### 6. Table: `settings` (Part 4A — Themes & Personalization)
+| Column | Type    | Constraints         | Description                           |
+|--------|---------|---------------------|---------------------------------------|
+| key    | TEXT    | PRIMARY KEY         | Setting key (e.g. 'theme', 'accent')  |
+| value  | TEXT    | NOT NULL            | Setting value (e.g. 'dark', 'green')  |
+
+*Usage:* `get_setting(key, default)` / `set_setting(key, value)` in `database/queries.py`.
+
 ---
 
-## Completed Features (Parts 1, 2, and 3)
+## Completed Features (Parts 1, 2, 3, and 4)
 
 | Feature | Scope | Status | File Location |
 |---------|-------|--------|---------------|
@@ -146,39 +164,45 @@ All foreign keys use `ON DELETE CASCADE`. Foreign key constraints are enforced w
 | Dedicated Data Management & Backup Page | Part 3 | ✅ | `gui/pages/data_page.py` |
 | Quick Export & Import Buttons on Contacts Page | Part 3 | ✅ | `gui/pages/contacts_page.py` |
 | Global Data Synchronization (`_refresh_all_pages`) | Part 3 | ✅ | `gui/app_window.py` |
+| Light / Dark Theme Toggle | Part 4A | ✅ | `gui/theme.py`, `gui/app_window.py` |
+| Accent Colour Options (blue, green, purple, orange, red, teal) | Part 4A | ✅ | `gui/theme.py` |
+| Theme & Accent Persistence (settings table) | Part 4A | ✅ | `database/queries.py`, `services/contact_service.py` |
+| Theme Switch Button in Sidebar | Part 4A | ✅ | `gui/app_window.py` |
+| Soft-Delete / Move to Trash | Part 4B | ✅ | `database/queries.py`, `services/contact_service.py` |
+| Dedicated Trash Page | Part 4B | ✅ | `gui/pages/trash_page.py` |
+| Restore from Trash (preserves phones, groups, fav/emergency) | Part 4B | ✅ | `services/contact_service.py`, `gui/pages/trash_page.py` |
+| Permanent Delete from Trash (with confirmation) | Part 4B | ✅ | `services/contact_service.py`, `gui/pages/trash_page.py` |
+| Duplicate Conflict Handling on Restore | Part 4B | ✅ | `gui/pages/trash_page.py` |
 
 ---
 
-## Files Created or Modified in Part 3
+## Files Created or Modified in Part 4 (Themes + Recycle Bin)
 
-- `services/data_service.py` *(NEW)*: Complete implementation of `export_contacts_to_csv`, `import_contacts_from_csv`, `create_database_backup`, `verify_backup_file`, and `restore_database_from_backup`.
-- `gui/pages/data_page.py` *(NEW)*: Full Data Management & Backup interface with 4 functional card sections and an interactive import summary dialog.
-- `gui/pages/contacts_page.py`: Added "📥 Import CSV" and "📤 Export CSV" quick-action buttons to the top bar.
-- `gui/app_window.py`: Registered `DataPage` in the sidebar navigation (6 items total) and added `_refresh_all_pages` callback for data changes.
-- `test_suite.py`: Expanded to 15 comprehensive automated test modules.
-- `TASKS.md`, `PROJECT_PLAN.md`, `README.md`, `HANDOFF.md`: Full documentation update.
+### New files:
+- `gui/pages/trash_page.py` *(NEW)*: Trash / Recycle Bin page — view trashed contacts, restore, or permanently delete with confirmation.
+- `test_trash_theme.py` *(TEMP, deleted)*: Manual verification script (removed after testing).
+
+### Modified files:
+- `database/connection.py`: Added `is_deleted` and `deleted_at` columns to `contacts` table (via safe ALTER TABLE); added `settings` table for theme/accent persistence.
+- `database/queries.py`: Changed `delete_contact` to soft-delete; added `purge_contact`, `restore_contact`, `get_trashed_contacts`; added `get_setting`/`set_setting`; updated all read queries to filter `is_deleted = 0`.
+- `services/contact_service.py`: `remove_contact` now soft-deletes; added `purge_contact`, `restore_contact`, `fetch_trashed_contacts`, `check_duplicate` wrapper, `get_setting`/`set_setting`.
+- `gui/theme.py`: Split `COLORS` into `LIGHT_COLORS` / `DARK_COLORS`; added `ACCENT_COLORS` (6 options); added `apply_theme()`, `set_accent_color()`, `get_current_theme()`, `get_current_accent()`.
+- `gui/app_window.py`: Loads saved theme/accent on startup; added 🌓 "Switch Theme" button in sidebar; added Trash page to navigation (8 items total); `_toggle_theme()` persists choice.
+- `gui/pages/contacts_page.py`: Delete confirmation now says "Move to Trash" instead of permanent delete.
+- `gui/pages/favourites_page.py`: Delete confirmation updated for Trash behaviour.
+- `gui/pages/emergency_page.py`: Delete confirmation updated for Trash behaviour.
+- `TASKS.md`, `README.md`, `HANDOFF.md`: Full documentation update.
 
 ---
 
 ## Known Bugs / Limitations
 
-None. All 15 automated test modules pass cleanly, and manual verification shows zero syntax or runtime errors.
+None. All 19 automated test modules pass cleanly.
 
----
-
-## Exact Next Steps for Part 4 (Final Phase)
-
-1. **Profile Photos / Avatars:**
-   - Store avatar file paths or thumbnails in `assets/avatars/`.
-   - Add a photo picker to `ContactFormDialog`.
-   - Render round or squared avatar in contact details.
-2. **Reminders & Special Dates:**
-   - Add `birthday` and `anniversary` date fields to `contacts`.
-   - Show upcoming birthdays within the next 7/30 days on the Dashboard.
-3. **Theme Customization:**
-   - Light / Dark mode toggle in `theme.py`.
-4. **Keyboard Shortcuts:**
-   - `Ctrl+N` for new contact, `Ctrl+F` for focus search, `Ctrl+E` for edit, `Delete` key for delete.
+### Design notes for future development:
+1. **Theme changes require page refresh:** Switching themes calls `_refresh_all_pages()` which rebuilds all page widgets. This is by design — Tkinter widgets don't dynamically restyle when `COLORS` dict changes.
+2. **Soft-delete preserves data:** Deleted contacts keep phone numbers and group memberships. If a contact is restored and a duplicate (same name+phone) now exists, the user is prompted to confirm restore-anyway.
+3. **Permanent delete is irreversible:** `purge_contact()` hard-deletes the row and cascades to `phone_numbers` and `contact_groups`.
 
 ---
 

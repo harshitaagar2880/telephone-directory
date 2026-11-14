@@ -91,6 +91,45 @@ def initialize_database() -> None:
             )
         """)
 
+        # --- Recently Viewed table (Part 4) ---
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS recently_viewed (
+                contact_id INTEGER PRIMARY KEY,
+                viewed_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+            )
+        """)
+
+        # --- Speed Dial table (Part 4) ---
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS speed_dial (
+                slot        INTEGER PRIMARY KEY,  -- 1 to 9
+                contact_id  INTEGER NOT NULL UNIQUE,
+                assigned_at TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+            )
+        """)
+
+        # --- Recycle Bin columns on contacts (Part 4B) ---
+        # Soft-delete support: is_deleted=1 means contact is in Trash.
+        # Existing databases get these columns via ALTER TABLE (safe, idempotent).
+        try:
+            cursor.execute("ALTER TABLE contacts ADD COLUMN is_deleted INTEGER DEFAULT 0")
+        except sqlite3.Error:
+            pass  # column already exists
+        try:
+            cursor.execute("ALTER TABLE contacts ADD COLUMN deleted_at TEXT DEFAULT NULL")
+        except sqlite3.Error:
+            pass  # column already exists
+
+        # --- App settings table (Part 4A: themes & personalization) ---
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                key    TEXT    PRIMARY KEY,
+                value  TEXT    NOT NULL
+            )
+        """)
+
         # --- Seed default groups if not exist ---
         cursor.execute("SELECT COUNT(*) AS cnt FROM groups")
         if cursor.fetchone()["cnt"] == 0:

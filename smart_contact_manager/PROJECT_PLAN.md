@@ -12,7 +12,8 @@ into a feature-rich professional application, built incrementally across multipl
 | Language    | Python 3.10+                      |
 | GUI         | Tkinter + ttk (standard library)  |
 | Database    | SQLite via sqlite3 (stdlib)        |
-| Charts      | Matplotlib (Part 3)               |
+| Data Format | CSV (RFC 4180 / UTF-8 with BOM)   |
+| Backup      | SQLite Online Backup API          |
 | OS          | Windows 10/11                     |
 
 ---
@@ -60,14 +61,29 @@ into a feature-rich professional application, built incrementally across multipl
 - **Sidebar Navigation:**
   - 5 Fully functional pages: Dashboard, All Contacts, Favourites, Emergency, Groups
 
-### 🔲 Part 3 — Statistics, Analytics, Import & Export (UPCOMING)
-- Matplotlib visualizations on Dashboard (pie chart of group distribution, contact growth)
-- Export contacts to CSV format
-- Export contacts to vCard (VCF) format
-- Import contacts from CSV with field mapping & duplicate detection
-- Activity log / audit history of contact modifications
+### ✅ Part 3 — Data Import, Export & Backup (COMPLETE)
+- **CSV Contact Export:**
+  - Export all contacts into standard CSV with UTF-8 BOM encoding for Excel compatibility.
+  - Includes full names, primary and secondary numbers (with labels), email, address, notes, favourite status, emergency status, and assigned groups.
+  - Available via the dedicated Backup & Data page and quick-action button on All Contacts page.
+- **CSV Contact Import:**
+  - Import contacts from CSV with case-insensitive header matching.
+  - Format validation using regex for phone numbers and emails.
+  - Automatic duplicate contact detection (skips existing contacts).
+  - Automatic group resolution and creation.
+  - Detailed Import Summary modal dialog reporting processed, imported, skipped, and failed rows.
+- **Database Backup:**
+  - Atomic, online backup using Python's native `sqlite3.backup` API.
+  - User-selected destination with automatic timestamped filename (`contacts_backup_YYYYMMDD_HHMMSS.db`).
+- **Database Restore:**
+  - Safely restore active database from any valid SQLite backup.
+  - Pre-restore candidate verification (`PRAGMA integrity_check` & schema validation).
+  - Automatic pre-restore safety snapshot in `_pre_restore_backup/` to prevent data loss.
+  - Automatic reload of all application pages upon successful restoration.
+- **Sidebar Navigation:**
+  - 6 Fully functional pages: Dashboard, All Contacts, Favourites, Emergency, Groups, Backup & Data.
 
-### 🔲 Part 4 — Polish & Advanced Features (FUTURE)
+### 🔲 Part 4 — Polish & Advanced Features (UPCOMING)
 - Contact profile photos / avatars
 - Birthday & anniversary reminders
 - Light / Dark theme toggle

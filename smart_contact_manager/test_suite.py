@@ -272,22 +272,115 @@ if os.path.exists(test_backup_path):
     os.remove(test_backup_path)
 print("[14] Database Restore & Data Preservation: PASS")
 
-# --- Test 15: All 6 GUI Pages Instantiation ---
+# ===================================================================
+# PART 4 TESTS: ADVANCED SEARCH, SORT/FILTER, RECENTLY VIEWED,
+#               DUPLICATE DETECTION, SPEED DIAL, 7-PAGE NAVIGATION
+# ===================================================================
+
+# --- Test 15: Advanced Sorting & Multi-Criteria Filtering ---
+# Current contacts in DB: Aarav Sharma Updated, Priya Patel, Rohan Gupta
+all_c_asc = cs.fetch_contacts_filtered_and_sorted(sort_by="name_asc")
+assert [c.full_name for c in all_c_asc] == sorted([c.full_name for c in all_c_asc]), "A-Z Sort failed"
+
+all_c_desc = cs.fetch_contacts_filtered_and_sorted(sort_by="name_desc")
+assert [c.full_name for c in all_c_desc] == sorted([c.full_name for c in all_c_desc], reverse=True), "Z-A Sort failed"
+
+# Filter by emergency
+emer_filtered = cs.fetch_contacts_filtered_and_sorted(filter_type="emer")
+assert len(emer_filtered) == 1 and emer_filtered[0].full_name == "Priya Patel", "Emergency filter failed"
+
+# Filter by custom group
+techlead_grp = [g for g in cs.fetch_all_groups() if g["name"] == "TechLead"][0]
+tech_filtered = cs.fetch_contacts_filtered_and_sorted(group_id=techlead_grp["id"])
+assert len(tech_filtered) == 1 and tech_filtered[0].full_name == "Rohan Gupta", "Group filter failed"
+
+# Partial search across secondary phones
+sec_search = cs.fetch_contacts_filtered_and_sorted(search_query="24354657")
+assert len(sec_search) == 1 and sec_search[0].full_name == "Rohan Gupta", "Secondary phone partial search failed"
+print("[15] Advanced Sorting & Filtering (A-Z/Z-A, group, emergency, secondary phone search): PASS")
+
+# --- Test 16: Recently Viewed Tracking ---
+# Open Priya, then Rohan, then Priya again
+priya = [c for c in all_c_asc if c.full_name == "Priya Patel"][0]
+rohan = [c for c in all_c_asc if c.full_name == "Rohan Gupta"][0]
+
+cs.record_contact_viewed(priya.id)
+cs.record_contact_viewed(rohan.id)
+recently_viewed = cs.fetch_recently_viewed_contacts(limit=5)
+assert len(recently_viewed) == 2
+assert recently_viewed[0].id == rohan.id, "Most recently viewed should be first"
+
+# View Priya again -> should move Priya to position 0 without duplicating
+cs.record_contact_viewed(priya.id)
+recently_viewed_2 = cs.fetch_recently_viewed_contacts(limit=5)
+assert len(recently_viewed_2) == 2, "Recently viewed must avoid duplicates"
+assert recently_viewed_2[0].id == priya.id, "Priya should move to top after being re-viewed"
+print("[16] Recently Viewed Tracking (latest first, no duplicates): PASS")
+
+# --- Test 17: Duplicate Detection ---
+# Insert a contact with the same phone as Rohan, and another with the same email
+conn = get_connection()
+conn.execute("""
+    INSERT INTO contacts (full_name, phone, email, created_at, updated_at)
+    VALUES ('Rohan Twin', '+91 98333 44556', 'other@test.com', datetime('now'), datetime('now'))
+""")
+conn.commit()
+conn.close()
+
+dup_clusters = cs.detect_duplicate_contacts()
+assert len(dup_clusters) >= 1, "Duplicate detection should find matching phone cluster"
+phone_cluster = [cl for cl in dup_clusters if cl["type"] == "Phone" and cl["value"] == "+91 98333 44556"][0]
+assert len(phone_cluster["contacts"]) == 2, "Cluster should contain both contacts sharing the phone number"
+print(f"[17] Duplicate Detection (identified {len(dup_clusters)} clusters, no auto-delete): PASS")
+
+# Clean up twin contact
+conn = get_connection()
+conn.execute("DELETE FROM contacts WHERE full_name = 'Rohan Twin'")
+conn.commit()
+conn.close()
+
+# --- Test 18: Speed Dial Management ---
+# Assign Rohan to slot 1, Priya to slot 9
+ok, msg = cs.assign_speed_dial(1, rohan.id)
+assert ok, f"Speed dial assign failed: {msg}"
+ok, msg = cs.assign_speed_dial(9, priya.id)
+assert ok
+
+slots = cs.fetch_speed_dial_slots()
+assert len(slots) == 9, "Should have 9 speed dial slots"
+s1 = next(s for s in slots if s["slot"] == 1)
+s9 = next(s for s in slots if s["slot"] == 9)
+s2 = next(s for s in slots if s["slot"] == 2)
+assert s1["assigned"] and s1["contact"].id == rohan.id, "Slot 1 should be Rohan"
+assert s9["assigned"] and s9["contact"].id == priya.id, "Slot 9 should be Priya"
+assert not s2["assigned"], "Slot 2 should be unassigned"
+
+# Clear slot 1
+ok, msg = cs.clear_speed_dial(1)
+assert ok
+slots_after = cs.fetch_speed_dial_slots()
+s1_after = next(s for s in slots_after if s["slot"] == 1)
+assert not s1_after["assigned"], "Slot 1 should now be unassigned"
+print("[18] Speed Dial (slots 1-9 assignment, retrieval, and clearing): PASS")
+
+# --- Test 19: All 7 GUI Pages Instantiation ---
 root = tk.Tk()
 root.withdraw()
 from gui.app_window import AppWindow
 app = AppWindow()
-pages = ["dashboard", "contacts", "favourites", "emergency", "groups", "data"]
+pages = ["dashboard", "contacts", "speed_dial", "favourites", "emergency", "groups", "data"]
 for p in pages:
     app._show_page(p)
 app.destroy()
 root.destroy()
-print(f"[15] All 6 GUI pages loaded and navigated cleanly: PASS")
+print(f"[19] All 7 GUI pages loaded and navigated cleanly: PASS")
 
 # Clean test data from DB so it's fresh for the user
 conn = get_connection()
 conn.execute("DELETE FROM contacts")
+conn.execute("DELETE FROM speed_dial")
+conn.execute("DELETE FROM recently_viewed")
 conn.commit()
 conn.close()
 
-print("=== ALL 15 TEST MODULES PASSED SUCCESSFULLY! ===")
+print("=== ALL 19 TEST MODULES PASSED SUCCESSFULLY! ===")

@@ -181,16 +181,51 @@ def edit_contact(contact_id: int, full_name: str, phone: str,
 
 def remove_contact(contact_id: int) -> Tuple[bool, str]:
     """
-    Delete a contact by id.
-    Returns (True, success_message) or (False, error_message).
+    Soft-delete a contact by id (moves to Trash / Recycle Bin).
+    Related phone numbers and group memberships are preserved for restoration.
     """
     try:
         deleted = db.delete_contact(contact_id)
         if deleted:
-            return True, "Contact deleted successfully."
+            return True, "Contact moved to Trash."
         return False, "Contact not found."
     except Exception as e:
         return False, f"Database error: {e}"
+
+
+def purge_contact(contact_id: int) -> Tuple[bool, str]:
+    """
+    Permanently hard-delete a contact from the database.
+    Cannot be undone. Related phone numbers and group memberships are also removed.
+    """
+    try:
+        deleted = db.purge_contact(contact_id)
+        if deleted:
+            return True, "Contact permanently deleted."
+        return False, "Contact not found."
+    except Exception as e:
+        return False, f"Database error: {e}"
+
+
+def restore_contact(contact_id: int) -> Tuple[bool, str]:
+    """
+    Restore a soft-deleted contact from the Trash.
+    The contact retains its original details, phone numbers, favourite/emergency
+    status, and group memberships.
+    """
+    try:
+        restored = db.restore_contact(contact_id)
+        if restored:
+            return True, "Contact restored from Trash."
+        return False, "Contact not found in Trash."
+    except Exception as e:
+        return False, f"Database error: {e}"
+
+
+def fetch_trashed_contacts() -> List[Contact]:
+    """Return all soft-deleted contacts (in the Trash) with phones and groups."""
+    rows = db.get_trashed_contacts()
+    return [_row_to_contact(r) for r in rows]
 
 
 def fetch_all_contacts() -> List[Contact]:
@@ -363,9 +398,169 @@ def get_recent_contacts(limit: int = 5) -> List[Contact]:
 def get_dashboard_stats() -> dict:
     """Return summary statistics for the dashboard."""
     groups = db.get_all_groups()
+    speed_dials = db.get_speed_dial_slots()
     return {
         "total":       db.get_contact_count(),
         "favourites":  db.get_favourite_count(),
         "emergency":   db.get_emergency_count(),
         "groups":      len(groups),
+        "speed_dial":  len(speed_dials),
     }
+
+
+# ---------------------------------------------------------------------------
+# RECENTLY VIEWED (Part 4)
+# ---------------------------------------------------------------------------
+
+def record_contact_viewed(contact_id: int) -> None:
+    """Track that a contact was opened/viewed."""
+    try:
+        db.record_recently_viewed(contact_id)
+    except Exception as e:
+        print(f"[Warning] Failed to record recently viewed: {e}")
+
+
+def fetch_recently_viewed_contacts(limit: int = 10) -> List[Contact]:
+    """Return contacts ordered by the most recently viewed first, avoiding duplicates."""
+    rows = db.get_recently_viewed_contacts(limit)
+    return [_row_to_contact(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# SPEED DIAL (Part 4)
+# ---------------------------------------------------------------------------
+
+def fetch_speed_dial_slots() -> List[Dict[str, Any]]:
+    """Return slots 1 through 9 with contact details if assigned."""
+    assigned_rows = db.get_speed_dial_slots()
+    assigned_dict = {r["slot"]: r for r in assigned_rows}
+
+    slots = []
+    for slot_num in range(1, 10):
+        if slot_num in assigned_dict:
+            r = assigned_dict[slot_num]
+            c = fetch_contact(r["contact_id"])
+            slots.append({
+                "slot": slot_num,
+                "assigned": True,
+                "contact": c,
+                "assigned_at": r["assigned_at"]
+            })
+        else:
+            slots.append({
+                "slot": slot_num,
+                "assigned": False,
+                "contact": None,
+                "assigned_at": None
+            })
+    return slots
+
+
+def assign_speed_dial(slot: int, contact_id: int) -> Tuple[bool, str]:
+    """Assign a contact to speed dial slot (1 to 9)."""
+    if not (1 <= slot <= 9):
+        return False, "Speed dial slot must be between 1 and 9."
+
+    contact = fetch_contact(contact_id)
+    if not contact:
+        return False, "Contact not found."
+
+    try:
+        ok = db.set_speed_dial_slot(slot, contact_id)
+        if ok:
+            return True, f"Speed Dial #{slot} assigned to '{contact.full_name}'."
+        return False, "Failed to assign speed dial slot."
+    except Exception as e:
+        return False, f"Database error: {e}"
+
+
+def clear_speed_dial(slot: int) -> Tuple[bool, str]:
+    """Clear assignment for a speed dial slot (1 to 9)."""
+    if not (1 <= slot <= 9):
+        return False, "Invalid slot number."
+    try:
+        ok = db.clear_speed_dial_slot(slot)
+        if ok:
+            return True, f"Speed Dial #{slot} cleared."
+        return False, f"Speed Dial #{slot} was not assigned."
+    except Exception as e:
+        return False, f"Database error: {e}"
+
+
+def fetch_contact_speed_dial(contact_id: int) -> Optional[int]:
+    """Return which speed dial slot is assigned to a contact, or None."""
+    return db.get_contact_speed_dial(contact_id)
+
+
+# ---------------------------------------------------------------------------
+# ADVANCED DUPLICATE DETECTION (Part 4)
+# ---------------------------------------------------------------------------
+
+def detect_duplicate_contacts() -> List[Dict[str, Any]]:
+    """
+    Find clusters of contacts that share phone numbers, emails, or exact names.
+    Returns list of dicts:
+        [
+            {
+                "type": "Phone" | "Email" | "Name",
+                "value": "...",
+                "reason": "...",
+                "contacts": [Contact, Contact, ...]
+            },
+            ...
+        ]
+    """
+    raw_clusters = db.find_duplicate_contacts_clusters()
+    processed_clusters = []
+
+    for cluster in raw_clusters:
+        contacts = [_row_to_contact(r) for r in cluster["contacts"]]
+        processed_clusters.append({
+            "type": cluster["type"],
+            "value": cluster["value"],
+            "reason": cluster["reason"],
+            "contacts": contacts
+        })
+    return processed_clusters
+
+
+# ---------------------------------------------------------------------------
+# ADVANCED FILTER & SORT (Part 4)
+# ---------------------------------------------------------------------------
+
+def fetch_contacts_filtered_and_sorted(
+    search_query: str = "",
+    filter_type: str = "all",
+    group_id: Optional[int] = None,
+    sort_by: str = "name_asc"
+) -> List[Contact]:
+    """
+    Unified search, filter, and sort across all contacts.
+    """
+    rows = db.query_contacts_filtered_and_sorted(
+        search_query=search_query,
+        filter_type=filter_type,
+        group_id=group_id,
+        sort_by=sort_by
+    )
+    return [_row_to_contact(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# APP SETTINGS (Part 4A: Themes & Personalization)
+# ---------------------------------------------------------------------------
+
+def get_setting(key: str, default: Optional[str] = None) -> Optional[str]:
+    """Return an app setting value by key, or default if not found."""
+    return db.get_setting(key, default=default)
+
+
+def set_setting(key: str, value: str) -> None:
+    """Save an app setting key-value pair."""
+    db.set_setting(key, value)
+
+
+def check_duplicate(full_name: str, phone: str,
+                    exclude_id: Optional[int] = None) -> bool:
+    """Wrapper around db.check_duplicate for convenience."""
+    return db.check_duplicate(full_name.strip(), phone.strip(), exclude_id=exclude_id)

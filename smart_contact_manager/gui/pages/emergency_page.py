@@ -282,7 +282,12 @@ class EmergencyPage(tk.Frame):
         contact = fetch_contact(self._selected_id)
         if not contact:
             return
-        if not messagebox.askyesno("Confirm Delete", f"Delete emergency contact '{contact.full_name}' permanently?"):
+        if not messagebox.askyesno(
+            "Move to Trash",
+            f"Are you sure you want to move emergency contact '{contact.full_name}' to the Trash?\n\n"
+            "The contact can be restored from the Recycle Bin later.",
+            icon="warning"
+        ):
             return
         ok, msg = remove_contact(self._selected_id)
         if ok:
