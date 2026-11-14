@@ -234,9 +234,10 @@ def fetch_all_contacts() -> List[Contact]:
     return [_row_to_contact(r) for r in rows]
 
 
-def fetch_contact(contact_id: int) -> Optional[Contact]:
-    """Return a single Contact by id, or None."""
-    row = db.get_contact_by_id(contact_id)
+def fetch_contact(contact_id: int, include_deleted: bool = False) -> Optional[Contact]:
+    """Return a single Contact by id, or None.
+    Set include_deleted=True to also find soft-deleted (trashed) contacts."""
+    row = db.get_contact_by_id(contact_id, include_deleted=include_deleted)
     return _row_to_contact(row) if row else None
 
 
