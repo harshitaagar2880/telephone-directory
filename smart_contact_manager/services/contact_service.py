@@ -1,12 +1,13 @@
 """
 services/contact_service.py
 ----------------------------
-Business logic layer: validation, duplicate checking, and orchestration.
+Business logic layer: validation, duplicate checking, orchestration of
+contacts, secondary phone numbers, favourite/emergency flags, and groups.
 GUI widgets call functions here; this layer talks to database/queries.py.
 """
 
 import re
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Dict, Any
 
 from models.contact import Contact
 import database.queries as db
@@ -25,7 +26,8 @@ EMAIL_PATTERN = re.compile(
 
 
 def validate_contact(full_name: str, phone: str,
-                     email: str = "") -> Tuple[bool, str]:
+                     email: str = "",
+                     extra_phones: Optional[List[Tuple[str, str]]] = None) -> Tuple[bool, str]:
     """
     Validate fields before inserting or updating.
     Returns (True, "") on success or (False, error_message) on failure.
@@ -37,18 +39,52 @@ def validate_contact(full_name: str, phone: str,
         return False, "Name must be at least 2 characters."
 
     if not phone.strip():
-        return False, "Phone number is required."
+        return False, "Primary phone number is required."
 
     if not PHONE_PATTERN.match(phone.strip()):
         return False, (
-            "Invalid phone number.\n"
+            "Invalid primary phone number.\n"
             "Accepted formats: 9876543210, +91 98765 43210, (022) 2345-6789"
         )
 
     if email.strip() and not EMAIL_PATTERN.match(email.strip()):
         return False, "Invalid email address format."
 
+    if extra_phones:
+        for idx, (label, num) in enumerate(extra_phones, 1):
+            num_clean = num.strip()
+            if num_clean and not PHONE_PATTERN.match(num_clean):
+                lbl = label.strip() or f"Secondary #{idx}"
+                return False, f"Invalid phone number format for {lbl}: '{num_clean}'"
+
     return True, ""
+
+
+# ---------------------------------------------------------------------------
+# Helper: Assemble full Contact object with phones and groups
+# ---------------------------------------------------------------------------
+
+def _row_to_contact(row) -> Contact:
+    """Build a Contact object with extra phone numbers and groups attached."""
+    if not row:
+        return None
+    cid = row["id"]
+    
+    # Secondary phone numbers
+    pn_rows = db.get_phone_numbers(cid)
+    extra_phones = [
+        {"id": p["id"], "label": p["label"], "number": p["number"]}
+        for p in pn_rows
+    ]
+    
+    # Associated groups
+    grp_rows = db.get_contact_groups(cid)
+    groups = [
+        {"id": g["id"], "name": g["name"], "color": g["color"]}
+        for g in grp_rows
+    ]
+    
+    return Contact.from_row(row, extra_phones=extra_phones, groups=groups)
 
 
 # ---------------------------------------------------------------------------
@@ -58,21 +94,23 @@ def validate_contact(full_name: str, phone: str,
 def add_contact(full_name: str, phone: str, email: str = "",
                 address: str = "", notes: str = "",
                 is_favourite: bool = False,
-                is_emergency: bool = False) -> Tuple[bool, str]:
+                is_emergency: bool = False,
+                extra_phones: Optional[List[Tuple[str, str]]] = None,
+                group_ids: Optional[List[int]] = None) -> Tuple[bool, str]:
     """
-    Validate and insert a new contact.
+    Validate and insert a new contact, including extra phone numbers and group associations.
     Returns (True, success_message) or (False, error_message).
     """
     # 1. Validate inputs
-    ok, msg = validate_contact(full_name, phone, email)
+    ok, msg = validate_contact(full_name, phone, email, extra_phones)
     if not ok:
         return False, msg
 
     # 2. Duplicate check
     if db.check_duplicate(full_name.strip(), phone.strip()):
-        return False, "A contact with the same name and phone number already exists."
+        return False, "A contact with the same name and primary phone number already exists."
 
-    # 3. Insert
+    # 3. Insert into database
     try:
         new_id = db.insert_contact(
             full_name    = full_name.strip(),
@@ -83,6 +121,15 @@ def add_contact(full_name: str, phone: str, email: str = "",
             is_favourite = int(is_favourite),
             is_emergency = int(is_emergency),
         )
+
+        # 4. Save extra phone numbers if any
+        if extra_phones:
+            db.set_contact_phone_numbers(new_id, extra_phones)
+
+        # 5. Save group associations if any
+        if group_ids:
+            db.set_contact_groups(new_id, group_ids)
+
         return True, f"Contact '{full_name.strip()}' added successfully (ID: {new_id})."
     except Exception as e:
         return False, f"Database error: {e}"
@@ -91,17 +138,18 @@ def add_contact(full_name: str, phone: str, email: str = "",
 def edit_contact(contact_id: int, full_name: str, phone: str,
                  email: str = "", address: str = "", notes: str = "",
                  is_favourite: bool = False,
-                 is_emergency: bool = False) -> Tuple[bool, str]:
+                 is_emergency: bool = False,
+                 extra_phones: Optional[List[Tuple[str, str]]] = None,
+                 group_ids: Optional[List[int]] = None) -> Tuple[bool, str]:
     """
-    Validate and update an existing contact.
+    Validate and update an existing contact along with extra phones and groups.
     Returns (True, success_message) or (False, error_message).
     """
-    ok, msg = validate_contact(full_name, phone, email)
+    ok, msg = validate_contact(full_name, phone, email, extra_phones)
     if not ok:
         return False, msg
 
-    if db.check_duplicate(full_name.strip(), phone.strip(),
-                          exclude_id=contact_id):
+    if db.check_duplicate(full_name.strip(), phone.strip(), exclude_id=contact_id):
         return False, "Another contact with the same name and phone already exists."
 
     try:
@@ -115,9 +163,18 @@ def edit_contact(contact_id: int, full_name: str, phone: str,
             is_favourite = int(is_favourite),
             is_emergency = int(is_emergency),
         )
-        if updated:
-            return True, f"Contact '{full_name.strip()}' updated successfully."
-        return False, "Contact not found in the database."
+        if not updated:
+            return False, "Contact not found in the database."
+
+        # Update secondary phone numbers if supplied
+        if extra_phones is not None:
+            db.set_contact_phone_numbers(contact_id, extra_phones)
+
+        # Update group associations if supplied
+        if group_ids is not None:
+            db.set_contact_groups(contact_id, group_ids)
+
+        return True, f"Contact '{full_name.strip()}' updated successfully."
     except Exception as e:
         return False, f"Database error: {e}"
 
@@ -136,30 +193,179 @@ def remove_contact(contact_id: int) -> Tuple[bool, str]:
         return False, f"Database error: {e}"
 
 
-def fetch_all_contacts() -> list[Contact]:
+def fetch_all_contacts() -> List[Contact]:
     """Return all contacts as Contact objects."""
     rows = db.get_all_contacts()
-    return [Contact.from_row(r) for r in rows]
+    return [_row_to_contact(r) for r in rows]
 
 
 def fetch_contact(contact_id: int) -> Optional[Contact]:
     """Return a single Contact by id, or None."""
     row = db.get_contact_by_id(contact_id)
-    return Contact.from_row(row) if row else None
+    return _row_to_contact(row) if row else None
 
 
-def search_contacts(query: str) -> list[Contact]:
-    """Search contacts and return matching Contact objects."""
+def search_contacts(query: str) -> List[Contact]:
+    """Search contacts by name, primary phone, email, or secondary phones."""
     if not query.strip():
         return fetch_all_contacts()
     rows = db.search_contacts(query.strip())
-    return [Contact.from_row(r) for r in rows]
+    return [_row_to_contact(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Favourites and Emergency services
+# ---------------------------------------------------------------------------
+
+def fetch_favourite_contacts() -> List[Contact]:
+    """Return all favourite contacts."""
+    rows = db.get_favourite_contacts()
+    return [_row_to_contact(r) for r in rows]
+
+
+def toggle_favourite(contact_id: int, is_favourite: bool) -> Tuple[bool, str]:
+    """Mark or unmark a contact as favourite."""
+    try:
+        ok = db.set_favourite_status(contact_id, is_favourite)
+        if ok:
+            action = "marked as favourite" if is_favourite else "removed from favourites"
+            return True, f"Contact {action}."
+        return False, "Contact not found."
+    except Exception as e:
+        return False, f"Database error: {e}"
+
+
+def fetch_emergency_contacts() -> List[Contact]:
+    """Return all emergency contacts."""
+    rows = db.get_emergency_contacts()
+    return [_row_to_contact(r) for r in rows]
+
+
+def toggle_emergency(contact_id: int, is_emergency: bool) -> Tuple[bool, str]:
+    """Mark or unmark a contact as emergency."""
+    try:
+        ok = db.set_emergency_status(contact_id, is_emergency)
+        if ok:
+            action = "marked as emergency contact" if is_emergency else "removed from emergency contacts"
+            return True, f"Contact {action}."
+        return False, "Contact not found."
+    except Exception as e:
+        return False, f"Database error: {e}"
+
+
+# ---------------------------------------------------------------------------
+# Group management services
+# ---------------------------------------------------------------------------
+
+def fetch_all_groups() -> List[Dict[str, Any]]:
+    """Return all groups with id, name, color, and contact count."""
+    rows = db.get_all_groups()
+    return [
+        {"id": r["id"], "name": r["name"], "color": r["color"], "contact_count": r["contact_count"]}
+        for r in rows
+    ]
+
+
+def create_group(name: str, color: str = "#4A90D9") -> Tuple[bool, str]:
+    """Validate and create a new group."""
+    clean_name = name.strip()
+    if not clean_name:
+        return False, "Group name cannot be empty."
+    if len(clean_name) < 2:
+        return False, "Group name must be at least 2 characters."
+    
+    if db.get_group_by_name(clean_name):
+        return False, f"A group named '{clean_name}' already exists."
+
+    try:
+        gid = db.create_group(clean_name, color)
+        return True, f"Group '{clean_name}' created successfully (ID: {gid})."
+    except Exception as e:
+        return False, f"Database error: {e}"
+
+
+def edit_group(group_id: int, name: str, color: str = "#4A90D9") -> Tuple[bool, str]:
+    """Update a group's name and color."""
+    clean_name = name.strip()
+    if not clean_name:
+        return False, "Group name cannot be empty."
+    
+    existing = db.get_group_by_name(clean_name)
+    if existing and existing["id"] != group_id:
+        return False, f"Another group named '{clean_name}' already exists."
+
+    try:
+        ok = db.update_group(group_id, clean_name, color)
+        if ok:
+            return True, f"Group updated to '{clean_name}'."
+        return False, "Group not found."
+    except Exception as e:
+        return False, f"Database error: {e}"
+
+
+def delete_group(group_id: int) -> Tuple[bool, str]:
+    """
+    Delete a group without deleting its contacts.
+    """
+    try:
+        ok = db.delete_group(group_id)
+        if ok:
+            return True, "Group deleted successfully (contacts were preserved)."
+        return False, "Group not found."
+    except Exception as e:
+        return False, f"Database error: {e}"
+
+
+# Aliases for explicit naming
+create_custom_group = create_group
+edit_custom_group = edit_group
+delete_custom_group = delete_group
+
+
+def fetch_contacts_by_group(group_id: int) -> List[Contact]:
+    """Return all contacts in a specific group."""
+    rows = db.get_contacts_by_group(group_id)
+    return [_row_to_contact(r) for r in rows]
+
+
+def add_contact_to_group(contact_id: int, group_id: int) -> Tuple[bool, str]:
+    """Add a contact to a group."""
+    try:
+        ok = db.add_contact_to_group(contact_id, group_id)
+        if ok:
+            return True, "Contact added to group."
+        return False, "Contact is already in this group."
+    except Exception as e:
+        return False, f"Database error: {e}"
+
+
+def remove_contact_from_group(contact_id: int, group_id: int) -> Tuple[bool, str]:
+    """Remove a contact from a group."""
+    try:
+        ok = db.remove_contact_from_group(contact_id, group_id)
+        if ok:
+            return True, "Contact removed from group."
+        return False, "Contact was not in this group."
+    except Exception as e:
+        return False, f"Database error: {e}"
+
+
+# ---------------------------------------------------------------------------
+# Dashboard and Recent contacts
+# ---------------------------------------------------------------------------
+
+def get_recent_contacts(limit: int = 5) -> List[Contact]:
+    """Fetch the most recently added or updated contacts."""
+    rows = db.get_recent_contacts(limit)
+    return [_row_to_contact(r) for r in rows]
 
 
 def get_dashboard_stats() -> dict:
     """Return summary statistics for the dashboard."""
+    groups = db.get_all_groups()
     return {
-        "total":     db.get_contact_count(),
-        "favourites": db.get_favourite_count(),
-        "emergency": db.get_emergency_count(),
+        "total":       db.get_contact_count(),
+        "favourites":  db.get_favourite_count(),
+        "emergency":   db.get_emergency_count(),
+        "groups":      len(groups),
     }

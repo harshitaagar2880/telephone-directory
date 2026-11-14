@@ -81,6 +81,17 @@ def initialize_database() -> None:
             )
         """)
 
+        # --- Seed default groups if not exist ---
+        cursor.execute("SELECT COUNT(*) AS cnt FROM groups")
+        if cursor.fetchone()["cnt"] == 0:
+            default_groups = [
+                ("Family", "#E67E22"),
+                ("Friends", "#2ECC71"),
+                ("Work", "#3498DB"),
+                ("College", "#9B59B6"),
+            ]
+            cursor.executemany("INSERT INTO groups (name, color) VALUES (?, ?)", default_groups)
+
         conn.commit()
         print(f"[DB] Database initialized at: {DB_PATH}")
     except sqlite3.Error as e:

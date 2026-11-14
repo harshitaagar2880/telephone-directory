@@ -2,8 +2,12 @@
 gui/app_window.py
 ------------------
 Root application window.
-Builds the sidebar navigation and manages page switching.
-Imports and hosts DashboardPage and ContactsPage.
+Builds the sidebar navigation and manages page switching across:
+  - Dashboard
+  - All Contacts
+  - Favourites (⭐)
+  - Emergency Contacts (🚨)
+  - Custom Contact Groups (📁)
 """
 
 import tkinter as tk
@@ -12,18 +16,20 @@ from tkinter import ttk
 from gui.theme import COLORS, FONTS, apply_treeview_style
 from gui.pages.dashboard_page import DashboardPage
 from gui.pages.contacts_page  import ContactsPage
+from gui.pages.favourites_page import FavouritesPage
+from gui.pages.emergency_page import EmergencyPage
+from gui.pages.groups_page    import GroupsPage
 
 
 class AppWindow(tk.Tk):
     """
     The main application window.
-    Inherits from tk.Tk so it IS the root window.
     """
 
     APP_TITLE   = "Smart Contact Manager"
-    APP_VERSION = "1.0"
-    MIN_WIDTH   = 980
-    MIN_HEIGHT  = 600
+    APP_VERSION = "2.0"
+    MIN_WIDTH   = 1020
+    MIN_HEIGHT  = 640
 
     def __init__(self):
         super().__init__()
@@ -31,22 +37,22 @@ class AppWindow(tk.Tk):
         # --- Basic window setup ---
         self.title(f"{self.APP_TITLE}  v{self.APP_VERSION}")
         self.minsize(self.MIN_WIDTH, self.MIN_HEIGHT)
-        self.geometry("1100x680")
+        self.geometry("1160x700")
         self.configure(bg=COLORS["sidebar_bg"])
 
         # Center on screen
         self.update_idletasks()
         sw = self.winfo_screenwidth()
         sh = self.winfo_screenheight()
-        x  = (sw - 1100) // 2
-        y  = (sh - 680)  // 2
-        self.geometry(f"1100x680+{x}+{y}")
+        x  = (sw - 1160) // 2
+        y  = (sh - 700)  // 2
+        self.geometry(f"1160x700+{x}+{y}")
 
         # Apply ttk styles
         style = ttk.Style(self)
         apply_treeview_style(style)
 
-        # Build the layout
+        # Build layout
         self._build_layout()
         self._active_page: str = ""
         self._pages: dict[str, tk.Frame] = {}
@@ -63,9 +69,9 @@ class AppWindow(tk.Tk):
         """Create sidebar + main area side by side."""
 
         # ---- Sidebar ----
-        self._sidebar = tk.Frame(self, bg=COLORS["sidebar_bg"], width=200)
+        self._sidebar = tk.Frame(self, bg=COLORS["sidebar_bg"], width=210)
         self._sidebar.pack(side="left", fill="y")
-        self._sidebar.pack_propagate(False)   # keep fixed width
+        self._sidebar.pack_propagate(False)
 
         # App brand at the top of sidebar
         brand = tk.Frame(self._sidebar, bg=COLORS["sidebar_bg"])
@@ -73,14 +79,14 @@ class AppWindow(tk.Tk):
 
         tk.Label(
             brand, text="📋",
-            font=("Segoe UI Emoji", 22), fg=COLORS["sidebar_text"],
+            font=("Segoe UI Emoji", 24), fg=COLORS["sidebar_text"],
             bg=COLORS["sidebar_bg"]
         ).pack()
         tk.Label(
             brand, text="Smart Contact\nManager",
             font=FONTS["body_bold"], fg=COLORS["sidebar_text"],
             bg=COLORS["sidebar_bg"], justify="center"
-        ).pack()
+        ).pack(pady=(2, 0))
 
         # Thin separator below brand
         tk.Frame(self._sidebar, bg=COLORS["sidebar_hover"], height=1).pack(
@@ -94,13 +100,13 @@ class AppWindow(tk.Tk):
             bg=COLORS["sidebar_bg"]
         ).pack(anchor="w", padx=18, pady=(15, 5))
 
-        # Nav buttons will be added in _init_pages()
+        # Nav buttons container
         self._nav_frame = tk.Frame(self._sidebar, bg=COLORS["sidebar_bg"])
         self._nav_frame.pack(fill="x")
 
-        # Version label at the very bottom
+        # Version label at the bottom
         tk.Label(
-            self._sidebar, text=f"v{self.APP_VERSION}",
+            self._sidebar, text=f"v{self.APP_VERSION} (Part 2)",
             font=FONTS["small"], fg=COLORS["sidebar_icon"],
             bg=COLORS["sidebar_bg"]
         ).pack(side="bottom", pady=10)
@@ -116,17 +122,18 @@ class AppWindow(tk.Tk):
     def _init_pages(self):
         """Instantiate all pages and their sidebar nav buttons."""
         nav_items = [
-            ("dashboard", "🏠  Dashboard",   DashboardPage),
-            ("contacts",  "👤  Contacts",    ContactsPage),
+            ("dashboard",  "🏠  Dashboard",   DashboardPage),
+            ("contacts",   "👤  All Contacts", ContactsPage),
+            ("favourites", "⭐  Favourites",   FavouritesPage),
+            ("emergency",  "🚨  Emergency",    EmergencyPage),
+            ("groups",     "📁  Groups",       GroupsPage),
         ]
 
         for page_key, label, PageClass in nav_items:
-            # Create the page frame inside main_area
             page = PageClass(self._main_area)
             page.place(relx=0, rely=0, relwidth=1, relheight=1)
             self._pages[page_key] = page
 
-            # Sidebar button
             btn = tk.Button(
                 self._nav_frame,
                 text=label,
@@ -136,7 +143,7 @@ class AppWindow(tk.Tk):
                 activebackground=COLORS["sidebar_hover"],
                 activeforeground=COLORS["sidebar_text"],
                 relief="flat", bd=0,
-                anchor="w", padx=18, pady=10,
+                anchor="w", padx=18, pady=9,
                 cursor="hand2",
                 command=lambda k=page_key: self._show_page(k)
             )
@@ -169,6 +176,6 @@ class AppWindow(tk.Tk):
         page = self._pages[page_key]
         page.lift()
 
-        # Call refresh() if the page has it, to update data
+        # Refresh page data if applicable
         if hasattr(page, "refresh"):
             page.refresh()
