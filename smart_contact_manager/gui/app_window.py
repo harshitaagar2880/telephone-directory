@@ -8,6 +8,7 @@ Builds the sidebar navigation and manages page switching across:
   - Favourites (⭐)
   - Emergency Contacts (🚨)
   - Custom Contact Groups (📁)
+  - Backup & Data Management (💾)
 """
 
 import tkinter as tk
@@ -19,6 +20,7 @@ from gui.pages.contacts_page  import ContactsPage
 from gui.pages.favourites_page import FavouritesPage
 from gui.pages.emergency_page import EmergencyPage
 from gui.pages.groups_page    import GroupsPage
+from gui.pages.data_page      import DataPage
 
 
 class AppWindow(tk.Tk):
@@ -27,9 +29,9 @@ class AppWindow(tk.Tk):
     """
 
     APP_TITLE   = "Smart Contact Manager"
-    APP_VERSION = "2.0"
-    MIN_WIDTH   = 1020
-    MIN_HEIGHT  = 640
+    APP_VERSION = "3.0"
+    MIN_WIDTH   = 1080
+    MIN_HEIGHT  = 660
 
     def __init__(self):
         super().__init__()
@@ -37,16 +39,16 @@ class AppWindow(tk.Tk):
         # --- Basic window setup ---
         self.title(f"{self.APP_TITLE}  v{self.APP_VERSION}")
         self.minsize(self.MIN_WIDTH, self.MIN_HEIGHT)
-        self.geometry("1160x700")
+        self.geometry("1180x720")
         self.configure(bg=COLORS["sidebar_bg"])
 
         # Center on screen
         self.update_idletasks()
         sw = self.winfo_screenwidth()
         sh = self.winfo_screenheight()
-        x  = (sw - 1160) // 2
-        y  = (sh - 700)  // 2
-        self.geometry(f"1160x700+{x}+{y}")
+        x  = (sw - 1180) // 2
+        y  = (sh - 720)  // 2
+        self.geometry(f"1180x720+{x}+{y}")
 
         # Apply ttk styles
         style = ttk.Style(self)
@@ -69,7 +71,7 @@ class AppWindow(tk.Tk):
         """Create sidebar + main area side by side."""
 
         # ---- Sidebar ----
-        self._sidebar = tk.Frame(self, bg=COLORS["sidebar_bg"], width=210)
+        self._sidebar = tk.Frame(self, bg=COLORS["sidebar_bg"], width=215)
         self._sidebar.pack(side="left", fill="y")
         self._sidebar.pack_propagate(False)
 
@@ -106,7 +108,7 @@ class AppWindow(tk.Tk):
 
         # Version label at the bottom
         tk.Label(
-            self._sidebar, text=f"v{self.APP_VERSION} (Part 2)",
+            self._sidebar, text=f"v{self.APP_VERSION} (Part 3)",
             font=FONTS["small"], fg=COLORS["sidebar_icon"],
             bg=COLORS["sidebar_bg"]
         ).pack(side="bottom", pady=10)
@@ -122,15 +124,21 @@ class AppWindow(tk.Tk):
     def _init_pages(self):
         """Instantiate all pages and their sidebar nav buttons."""
         nav_items = [
-            ("dashboard",  "🏠  Dashboard",   DashboardPage),
-            ("contacts",   "👤  All Contacts", ContactsPage),
-            ("favourites", "⭐  Favourites",   FavouritesPage),
-            ("emergency",  "🚨  Emergency",    EmergencyPage),
-            ("groups",     "📁  Groups",       GroupsPage),
+            ("dashboard",  "🏠  Dashboard",     DashboardPage),
+            ("contacts",   "👤  All Contacts",   ContactsPage),
+            ("favourites", "⭐  Favourites",     FavouritesPage),
+            ("emergency",  "🚨  Emergency",      EmergencyPage),
+            ("groups",     "📁  Groups",         GroupsPage),
+            ("data",       "💾  Backup & Data",  DataPage),
         ]
 
         for page_key, label, PageClass in nav_items:
-            page = PageClass(self._main_area)
+            # Instantiate with on_data_change callback if supported (e.g. DataPage)
+            if page_key == "data":
+                page = PageClass(self._main_area, on_data_change=self._refresh_all_pages)
+            else:
+                page = PageClass(self._main_area)
+
             page.place(relx=0, rely=0, relwidth=1, relheight=1)
             self._pages[page_key] = page
 
@@ -179,3 +187,9 @@ class AppWindow(tk.Tk):
         # Refresh page data if applicable
         if hasattr(page, "refresh"):
             page.refresh()
+
+    def _refresh_all_pages(self):
+        """Refresh all instantiated pages when bulk data changes (e.g. import or restore)."""
+        for page in self._pages.values():
+            if hasattr(page, "refresh"):
+                page.refresh()

@@ -42,11 +42,23 @@
 - [x] GUI: Groups Management Page (`gui/pages/groups_page.py`) with group CRUD and member management
 - [x] GUI: Dashboard Page — updated 4 stat cards & recently added/updated contacts list
 - [x] GUI: Sidebar Navigation updated with 5 active pages
-- [x] Testing: Comprehensive automated test suite (`test_suite.py`) passing all 11 modules
-- [x] Documentation: Update README.md, PROJECT_PLAN.md, TASKS.md, HANDOFF.md
+- [x] Testing: Automated test suite passing all Part 2 modules
 
-## Part 3 Tasks (PENDING)
-- [ ] Matplotlib charts on Dashboard (contact growth, group distribution, category breakdown)
-- [ ] Export contacts to CSV / VCF format
-- [ ] Import contacts from CSV / VCF with field mapping
-- [ ] Contact activity / audit history log
+## Part 3 Tasks — Data Import, Export & Backup (COMPLETED)
+- [x] `services/data_service.py`: CSV export with secondary phones, groups, favourites, and emergency status (UTF-8 with BOM for Excel compatibility)
+- [x] `services/data_service.py`: CSV import with case-insensitive header matching, regex format validation, duplicate prevention, and auto-group resolution
+- [x] `services/data_service.py`: Consistent SQLite database backup using `sqlite3.backup` API with timestamped filenames
+- [x] `services/data_service.py`: Database restore with candidate file verification (`PRAGMA integrity_check` & required table checks) and pre-restore safety snapshot
+- [x] `gui/pages/data_page.py`: Dedicated Data Management & Backup page in sidebar with card layout
+- [x] `gui/pages/contacts_page.py`: Quick Export and Import buttons on the top bar
+- [x] Integration into `gui/app_window.py` sidebar navigation (6 items: Dashboard, All Contacts, Favourites, Emergency, Groups, Backup & Data)
+- [x] Global data refresh synchronization (`_refresh_all_pages`) on bulk import or database restore
+- [x] Testing: Comprehensive automated test suite (`test_suite.py`) expanded to 15 modules covering all Part 1, Part 2, and Part 3 features
+- [x] Documentation: Updated README.md, PROJECT_PLAN.md, TASKS.md, and HANDOFF.md
+
+## Part 4 Tasks (PENDING)
+- [ ] Profile photo upload & avatar display
+- [ ] Birthday / anniversary reminders
+- [ ] Light / Dark theme toggle
+- [ ] Keyboard shortcuts
+- [ ] Fuzzy search matching

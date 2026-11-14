@@ -42,6 +42,27 @@ A modern, offline-first desktop contact management system built with Python, Tki
   - 4 Live stat cards: Total Contacts, Favourites ⭐, Emergency 🚨, Contact Groups 📁.
   - Recently Added / Updated contacts list with double-click to view/edit.
 
+### Part 3 — Data Import, Export & Backup
+- **CSV Contact Export:**
+  - Export all contacts into standard CSV format with `UTF-8 with BOM` for seamless compatibility with Microsoft Excel.
+  - Includes full names, primary and secondary numbers (with labels), email, address, notes, favourite status, emergency status, and assigned groups.
+  - Available from the dedicated **Backup & Data** page and via the top-bar button on the **All Contacts** page.
+- **CSV Contact Import:**
+  - Import contacts from any CSV file with smart, case-insensitive header matching (`Full Name`, `Phone`, `Email`, `Address`, `Notes`, `Groups`, etc.).
+  - Robust row-by-row regex format validation for phone numbers and emails.
+  - Automatic duplicate detection (prevents duplicate contacts from being imported).
+  - Automatically resolves and creates missing contact groups.
+  - Interactive **Import Summary Dialog** showing total processed, imported, skipped (duplicates), and failed records with detailed error reasons.
+- **Database Backup:**
+  - Uses SQLite's native online backup API (`sqlite3.backup`) for a 100% consistent, non-corrupted database snapshot.
+  - Allows user to choose destination folder with auto-generated timestamped filenames (`contacts_backup_YYYYMMDD_HHMMSS.db`).
+  - Safe operation that will not overwrite existing backups accidentally.
+- **Database Restore:**
+  - Restore the application from any previously created SQLite database backup.
+  - **Integrity Verification:** Runs `PRAGMA integrity_check` and verifies required schema tables before attempting restore.
+  - **Safety Snapshot:** Automatically creates a pre-restore safety snapshot of the active database in `_pre_restore_backup/` before overwriting.
+  - Seamlessly reloads all open pages upon successful restoration.
+
 ---
 
 ## 🚀 How to Run
@@ -56,13 +77,13 @@ A modern, offline-first desktop contact management system built with Python, Tki
    python main.py
    ```
 
-> **Note:** The application uses only Python standard libraries (`tkinter`, `sqlite3`, `re`, `dataclasses`). No `pip install` is required for Parts 1 & 2!
+> **Note:** The application uses only Python standard libraries (`tkinter`, `sqlite3`, `csv`, `re`, `dataclasses`). No `pip install` is required!
 
 ---
 
 ## 🧪 Running Automated Tests
 
-To run the automated verification test suite covering all 11 modules:
+To run the automated verification test suite covering all 15 modules:
 ```bash
 cd smart_contact_manager
 python test_suite.py
@@ -75,8 +96,9 @@ python test_suite.py
 ```
 smart_contact_manager/
 ├── main.py                     # Entry point
-├── test_suite.py               # Comprehensive 11-module automated test suite
+├── test_suite.py               # Comprehensive 15-module automated test suite
 ├── contacts.db                 # SQLite database (auto-initialized & seeded)
+├── _pre_restore_backup/        # Automatic pre-restore safety snapshots
 ├── requirements.txt            # Dependency specification
 ├── README.md                   # Documentation & Viva guide
 ├── PROJECT_PLAN.md             # Project roadmap
@@ -88,18 +110,20 @@ smart_contact_manager/
 ├── models/
 │   └── contact.py              # Dataclasses: Contact, PhoneNumber, Group
 ├── services/
-│   └── contact_service.py      # Business logic, validation, group & phone orchestration
+│   ├── contact_service.py      # Business logic, validation, group & phone orchestration
+│   └── data_service.py         # CSV export/import, SQLite backup/restore
 ├── gui/
-│   ├── app_window.py           # Root window with 5-item sidebar navigation
+│   ├── app_window.py           # Root window with 6-item sidebar navigation
 │   ├── theme.py                # Visual styling, colors, typography, clam ttk theme
 │   ├── widgets.py              # Reusable LabelledEntry, StatCard, styled buttons
 │   ├── contact_form.py         # Modal form with dynamic phone rows & group checkboxes
 │   └── pages/
 │       ├── dashboard_page.py   # Dashboard with 4 stat cards & recent contacts
-│       ├── contacts_page.py    # All contacts list, search, filters & detail panel
+│       ├── contacts_page.py    # All contacts list, search, filters, detail panel, quick export/import
 │       ├── favourites_page.py  # Dedicated favourites page
 │       ├── emergency_page.py   # Dedicated emergency page
-│       └── groups_page.py      # Dedicated group management page
+│       ├── groups_page.py      # Dedicated group management page
+│       └── data_page.py        # Dedicated Backup & Data page
 └── assets/                     # Icons & resources
 ```
 
@@ -108,12 +132,15 @@ smart_contact_manager/
 ## 🎓 College Viva Preparation Guide
 
 1. **Architecture:** The project follows a strict **Layered (MVC-like) Architecture**:
-   - `gui/`: Handles all visual elements and user events.
-   - `services/`: Encapsulates business rules, regex validations, and data orchestration.
+   - `gui/`: Handles all visual elements, forms, and user interactions.
+   - `services/`: Encapsulates business logic, data import/export, SQLite backups, and regex validation.
    - `models/`: Plain Python dataclasses ensuring loose coupling.
    - `database/`: Manages SQLite connections and parameterized SQL queries.
-2. **Database Integrity:**
+2. **Database Integrity & Cascades:**
    - Enforces Foreign Key constraints with `PRAGMA foreign_keys = ON`.
-   - Uses `ON DELETE CASCADE` so deleting a contact automatically removes secondary numbers and group associations.
+   - Uses `ON DELETE CASCADE` so deleting a contact automatically cleans up secondary numbers and group memberships.
    - Deleting a group removes records from `contact_groups` while leaving the `contacts` table untouched.
-3. **Security:** All database queries utilize **parameterized SQL** (`?` placeholders) to prevent SQL injection vulnerabilities.
+3. **Backup & Restore Mechanism:**
+   - Uses Python's native `sqlite3.backup` API which locks pages during read/write to ensure ACID consistency without file locking conflicts.
+   - Restores are preceded by an automatic pre-restore safety snapshot in `_pre_restore_backup/` to guarantee zero data loss.
+4. **Security & Data Safety:** All database queries utilize **parameterized SQL** (`?` placeholders) to prevent SQL injection vulnerabilities.

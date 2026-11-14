@@ -1,8 +1,8 @@
 # HANDOFF.md — Smart Contact Manager
 
 > **For the next AI agent continuing this project.**
-> Read this file first. Both Part 1 and Part 2 are fully completed and tested.
-> Do NOT rewrite or modify working features. Follow the exact next steps for Part 3.
+> Read this file first. Parts 1, 2, and 3 are fully completed, tested, and operational.
+> Do NOT rewrite or modify working features. Follow the exact next steps for Part 4.
 
 ---
 
@@ -16,7 +16,7 @@
 - Platform: Windows 10/11 offline desktop application
 
 **Entry point:** `python main.py` (run from `smart_contact_manager/`)
-**Automated test runner:** `python test_suite.py` (runs all 11 integration test modules)
+**Automated test runner:** `python test_suite.py` (runs all 15 integration test modules)
 
 ---
 
@@ -33,9 +33,10 @@ Contacts/                           ← Root project folder
 ├── README.md                       ← Original readme (preserved)
 └── smart_contact_manager/          ← Application Directory
     ├── main.py                     ← Application entry point
-    ├── test_suite.py               ← Comprehensive 11-module automated test suite
-    ├── contacts.db                 ← SQLite database (auto-seeded)
-    ├── requirements.txt            ← Dependency documentation
+    ├── test_suite.py               ← Comprehensive 15-module automated test suite
+    ├── contacts.db                 ← SQLite database (auto-initialized & seeded)
+    ├── _pre_restore_backup/        ← Automatic pre-restore safety snapshots
+    ├── requirements.txt            ← Dependency specification
     ├── README.md                   ← User & college documentation
     ├── PROJECT_PLAN.md             ← Multi-phase roadmap
     ├── TASKS.md                    ← Task checklist
@@ -49,20 +50,22 @@ Contacts/                           ← Root project folder
     │   └── contact.py              ← Contact, PhoneNumber, Group dataclasses
     ├── services/
     │   ├── __init__.py
-    │   └── contact_service.py      ← Validation, duplicate check, CRUD, filters, group logic
+    │   ├── contact_service.py      ← Validation, duplicate check, CRUD, filters, group logic
+    │   └── data_service.py         ← CSV export, CSV import, SQLite backup, SQLite restore
     ├── gui/
     │   ├── __init__.py
-    │   ├── app_window.py           ← Root Tk window + 5-item sidebar navigation
-    │   ├── theme.py                ← Palette, typography, ttk clam styling
+    │   ├── app_window.py           ← Root Tk window + 6-item sidebar navigation
+    │   ├── theme.py                ← Visual styling, colors, typography, clam ttk theme
     │   ├── widgets.py              ← LabelledEntry, LabelledText, make_button, StatCard
-    │   ├── contact_form.py         ← Add/Edit modal dialog with dynamic phone rows & group checkboxes
+    │   ├── contact_form.py         ← Modal form with dynamic phone rows & group checkboxes
     │   └── pages/
     │       ├── __init__.py
     │       ├── dashboard_page.py   ← 4 Stat cards + Recently added/updated contacts list
-    │       ├── contacts_page.py    ← All contacts list, search, quick filters, detail panel
+    │       ├── contacts_page.py    ← All contacts list, search, filters, detail panel, quick export/import
     │       ├── favourites_page.py  ← Dedicated favourites page with instant unfavourite
     │       ├── emergency_page.py   ← Dedicated emergency page with dial-ready phone display
-    │       └── groups_page.py      ← Dedicated custom groups management + group members
+    │       ├── groups_page.py      ← Dedicated custom groups management + group members
+    │       └── data_page.py        ← Dedicated Backup & Data page (CSV & SQLite tools)
     └── assets/                     ← Assets folder for future icons/images
 ```
 
@@ -110,11 +113,11 @@ All foreign keys use `ON DELETE CASCADE`. Foreign key constraints are enforced w
 | group_id   | INTEGER | NOT NULL, FK -> groups(id) ON DELETE CASCADE                  |
 | PRIMARY KEY|         | (contact_id, group_id)                                        |
 
-*Note on deletion safety:* When a group is deleted, only entries in `contact_groups` are deleted via cascade. The contacts in `contacts` table remain completely intact.
+*Deletion safety:* When a group is deleted, only records in `contact_groups` are cascade-deleted. Contacts in the `contacts` table remain intact.
 
 ---
 
-## Completed Features (Parts 1 & 2)
+## Completed Features (Parts 1, 2, and 3)
 
 | Feature | Scope | Status | File Location |
 |---------|-------|--------|---------------|
@@ -130,61 +133,52 @@ All foreign keys use `ON DELETE CASCADE`. Foreign key constraints are enforced w
 | Dynamic Phone Row Addition & Removal | Part 2 | ✅ | `gui/contact_form.py` |
 | Display Secondary Phones in Details | Part 2 | ✅ | `contacts_page.py`, `favourites_page.py`, `emergency_page.py` |
 | Favourite Contacts Page | Part 2 | ✅ | `gui/pages/favourites_page.py` |
-| Unmark Favourite from Favourites Page | Part 2 | ✅ | `gui/pages/favourites_page.py` |
 | Emergency Contacts Page | Part 2 | ✅ | `gui/pages/emergency_page.py` |
-| Emergency Dial Display & Unmark Action | Part 2 | ✅ | `gui/pages/emergency_page.py` |
-| Custom Contact Groups (CRUD) | Part 2 | ✅ | `gui/pages/groups_page.py` |
-| Multi-group Contact Assignment | Part 2 | ✅ | `gui/contact_form.py`, `groups_page.py` |
-| View Contacts by Group | Part 2 | ✅ | `gui/pages/groups_page.py` |
-| Safe Group Deletion (Preserves Contacts) | Part 2 | ✅ | `services/contact_service.py` |
+| Custom Contact Groups (CRUD & Safe Deletion) | Part 2 | ✅ | `gui/pages/groups_page.py` |
 | Quick Filters (All, Favourites, Emergency) | Part 2 | ✅ | `gui/pages/contacts_page.py` |
-| Dashboard Stat Cards (Total, Fav, Emer, Groups) | Part 2 | ✅ | `gui/pages/dashboard_page.py` |
-| Recently Added/Updated Contacts List | Part 2 | ✅ | `gui/pages/dashboard_page.py` |
-| Sidebar Navigation with 5 Active Pages | Part 2 | ✅ | `gui/app_window.py` |
+| Dashboard Stat Cards & Recent Contacts | Part 2 | ✅ | `gui/pages/dashboard_page.py` |
+| CSV Export with full details | Part 3 | ✅ | `services/data_service.py` |
+| CSV Import with Validation & Duplicate Skip | Part 3 | ✅ | `services/data_service.py` |
+| CSV Import Detailed Modal Summary | Part 3 | ✅ | `gui/pages/data_page.py` |
+| Database Backup using `sqlite3.backup` API | Part 3 | ✅ | `services/data_service.py` |
+| Database Restore with Pre-restore Safety Snapshot | Part 3 | ✅ | `services/data_service.py` |
+| Backup File Integrity Verification (`PRAGMA integrity_check`) | Part 3 | ✅ | `services/data_service.py` |
+| Dedicated Data Management & Backup Page | Part 3 | ✅ | `gui/pages/data_page.py` |
+| Quick Export & Import Buttons on Contacts Page | Part 3 | ✅ | `gui/pages/contacts_page.py` |
+| Global Data Synchronization (`_refresh_all_pages`) | Part 3 | ✅ | `gui/app_window.py` |
 
 ---
 
-## Files Created or Modified in Part 2
+## Files Created or Modified in Part 3
 
-- `database/connection.py`: Seed default groups on initialize.
-- `database/queries.py`: Added queries for secondary phone numbers, groups, contact_groups, and updated `search_contacts` to search across secondary phone numbers.
-- `models/contact.py`: Added `PhoneNumber` and `Group` classes; updated `Contact` model with `extra_phones` and `groups`.
-- `services/contact_service.py`: Added business logic for secondary phones, groups, favourite/emergency toggles, and recent contacts.
-- `gui/contact_form.py`: Added dynamic secondary phone rows (label dropdown + input + remove button) and group assignment checkboxes.
-- `gui/pages/contacts_page.py`: Added secondary phone numbers and groups to detail panel, quick filter buttons (All, Favourites, Emergency), and quick toggle buttons.
-- `gui/pages/favourites_page.py`: New dedicated page for viewing and managing favourite contacts.
-- `gui/pages/emergency_page.py`: New dedicated page for viewing and managing emergency contacts.
-- `gui/pages/groups_page.py`: New dedicated page for creating, editing, and deleting groups, plus adding/removing contacts.
-- `gui/pages/dashboard_page.py`: Updated with 4 stat cards and recently added/updated contacts list.
-- `gui/app_window.py`: Registered all 5 pages in sidebar navigation.
-- `test_suite.py`: Automated 11-module test suite verifying all features.
+- `services/data_service.py` *(NEW)*: Complete implementation of `export_contacts_to_csv`, `import_contacts_from_csv`, `create_database_backup`, `verify_backup_file`, and `restore_database_from_backup`.
+- `gui/pages/data_page.py` *(NEW)*: Full Data Management & Backup interface with 4 functional card sections and an interactive import summary dialog.
+- `gui/pages/contacts_page.py`: Added "📥 Import CSV" and "📤 Export CSV" quick-action buttons to the top bar.
+- `gui/app_window.py`: Registered `DataPage` in the sidebar navigation (6 items total) and added `_refresh_all_pages` callback for data changes.
+- `test_suite.py`: Expanded to 15 comprehensive automated test modules.
 - `TASKS.md`, `PROJECT_PLAN.md`, `README.md`, `HANDOFF.md`: Full documentation update.
 
 ---
 
 ## Known Bugs / Limitations
 
-None. All 11 automated test modules pass cleanly, and manual verification shows zero syntax or runtime errors.
+None. All 15 automated test modules pass cleanly, and manual verification shows zero syntax or runtime errors.
 
 ---
 
-## Exact Next Steps for Part 3
+## Exact Next Steps for Part 4 (Final Phase)
 
-1. **Matplotlib Visualizations on Dashboard:**
-   - Add chart(s) on `DashboardPage`:
-     - Donut or Pie chart of Group distribution (e.g. Contacts per group)
-     - Bar chart of Favourites vs Emergency vs General contacts
-   - Embed Matplotlib canvas into Tkinter using `FigureCanvasTkAgg`.
-2. **Export Contacts:**
-   - Export contacts to CSV format (`filedialog.asksaveasfilename`).
-   - Export contacts to VCF (vCard 3.0) format for mobile phone import.
-3. **Import Contacts:**
-   - Import contacts from CSV format (`filedialog.askopenfilename`).
-   - Parse CSV headers and map to `full_name`, `phone`, `email`, `address`, `notes`.
-   - Validate imported rows and report number of successfully imported vs skipped contacts.
-4. **Audit History / Activity Log:**
-   - Add an `activity_log` table to log actions (`Contact Added`, `Contact Updated`, `Contact Deleted`).
-   - Show activity log on Dashboard or in a History modal.
+1. **Profile Photos / Avatars:**
+   - Store avatar file paths or thumbnails in `assets/avatars/`.
+   - Add a photo picker to `ContactFormDialog`.
+   - Render round or squared avatar in contact details.
+2. **Reminders & Special Dates:**
+   - Add `birthday` and `anniversary` date fields to `contacts`.
+   - Show upcoming birthdays within the next 7/30 days on the Dashboard.
+3. **Theme Customization:**
+   - Light / Dark mode toggle in `theme.py`.
+4. **Keyboard Shortcuts:**
+   - `Ctrl+N` for new contact, `Ctrl+F` for focus search, `Ctrl+E` for edit, `Delete` key for delete.
 
 ---
 

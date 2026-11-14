@@ -81,6 +81,16 @@ def initialize_database() -> None:
             )
         """)
 
+        # --- Activity Logs table (Part 3) ---
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS activity_logs (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                action      TEXT    NOT NULL,
+                description TEXT    NOT NULL,
+                timestamp   TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+            )
+        """)
+
         # --- Seed default groups if not exist ---
         cursor.execute("SELECT COUNT(*) AS cnt FROM groups")
         if cursor.fetchone()["cnt"] == 0:

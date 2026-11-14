@@ -12,7 +12,7 @@ Provides:
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from typing import Optional, List
 
 from gui.theme import COLORS, FONTS
@@ -23,6 +23,7 @@ from services.contact_service import (
     fetch_all_contacts, search_contacts, remove_contact, fetch_contact,
     toggle_favourite, toggle_emergency
 )
+from services.data_service import export_contacts_to_csv, import_contacts_from_csv
 
 
 class ContactsPage(tk.Frame):
@@ -64,11 +65,27 @@ class ContactsPage(tk.Frame):
             bg=COLORS["main_bg"]
         ).pack(side="left")
 
+        # Top right action buttons
+        actions_box = tk.Frame(topbar, bg=COLORS["main_bg"])
+        actions_box.pack(side="right")
+
         make_button(
-            topbar, text="＋  Add Contact",
+            actions_box, text="📥  Import CSV",
+            command=self._quick_import_csv,
+            style="secondary", width=13
+        ).pack(side="left", padx=(0, 6))
+
+        make_button(
+            actions_box, text="📤  Export CSV",
+            command=self._quick_export_csv,
+            style="secondary", width=13
+        ).pack(side="left", padx=(0, 6))
+
+        make_button(
+            actions_box, text="＋  Add Contact",
             command=self._open_add_form,
-            style="primary", width=16
-        ).pack(side="right")
+            style="primary", width=15
+        ).pack(side="left")
 
         horizontal_separator(self).pack(fill="x", padx=30, pady=(5, 10))
 
@@ -465,8 +482,51 @@ class ContactsPage(tk.Frame):
                 self._on_select()
 
     # ------------------------------------------------------------------
-    # Actions: Add, Edit, Delete
+    # Actions: Add, Edit, Delete, Import, Export
     # ------------------------------------------------------------------
+
+    def _quick_export_csv(self):
+        filename = filedialog.asksaveasfilename(
+            parent=self,
+            title="Export Contacts to CSV",
+            defaultextension=".csv",
+            filetypes=[("CSV Files (*.csv)", "*.csv"), ("All Files (*.*)", "*.*")],
+            initialfile="contacts_export.csv"
+        )
+        if not filename:
+            return
+        ok, msg, count = export_contacts_to_csv(filename)
+        if ok:
+            messagebox.showinfo("Export Successful", msg, parent=self)
+        else:
+            messagebox.showerror("Export Failed", msg, parent=self)
+
+    def _quick_import_csv(self):
+        filename = filedialog.askopenfilename(
+            parent=self,
+            title="Select CSV File to Import",
+            filetypes=[("CSV Files (*.csv)", "*.csv"), ("All Files (*.*)", "*.*")]
+        )
+        if not filename:
+            return
+        summary = import_contacts_from_csv(filename)
+        msg = (
+            f"Import Processed:\n"
+            f"• Total Rows: {summary['total']}\n"
+            f"• Successfully Imported: {summary['imported']}\n"
+            f"• Skipped (Duplicates): {summary['skipped']}\n"
+            f"• Failed (Invalid): {summary['failed']}"
+        )
+        if summary["errors"]:
+            msg += "\n\nFirst Errors:\n" + "\n".join(summary["errors"][:5])
+
+        if summary["imported"] > 0:
+            messagebox.showinfo("Import Summary", msg, parent=self)
+            self.refresh()
+        elif summary["total"] == 0 and summary["errors"]:
+            messagebox.showerror("Import Failed", "\n".join(summary["errors"]), parent=self)
+        else:
+            messagebox.showwarning("Import Summary", msg, parent=self)
 
     def _open_add_form(self):
         ContactFormDialog(self, contact=None, on_save=self.refresh)
