@@ -1,0 +1,12 @@
+# Smart Contact Manager — Python Dependencies
+# All packages below are from the Python standard library EXCEPT those marked [INSTALL].
+# Run:  pip install -r requirements.txt
+#
+# Standard library (no installation needed):
+#   tkinter, sqlite3, re, os, sys, dataclasses, typing, datetime
+
+# [INSTALL] Only if you decide to add statistical charts later:
+# matplotlib>=3.7.0
+
+# No third-party packages are required for Part 1.
+# This file is intentionally minimal — the app runs on the Python standard library alone.
