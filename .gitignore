@@ -1,5 +1,0 @@
-__pycache__/
-*.py[cod]
-venv/
-.env
-smart_contact_manager/contacts.db
