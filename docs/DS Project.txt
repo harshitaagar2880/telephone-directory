@@ -1,0 +1,155 @@
+================================================================================
+                    DATA STRUCTURES PROJECT SPECIFICATION
+================================================================================
+
+AIM :
+--------------------------------------------------------------------------------
+DESIGN AND IMPLEMENTATION OF AN ADVANCED DESKTOP TELEPHONE DIRECTORY AND SMART 
+CONTACT MANAGEMENT SYSTEM UTILIZING RELATIONAL DATA STRUCTURES, MULTI-ATTRIBUTE 
+SEARCH ALGORITHMS, AND MODULAR MVC ARCHITECTURE.
+
+
+ABOUT :
+--------------------------------------------------------------------------------
+The Smart Contact Manager is an enterprise-grade, offline-first desktop telephone 
+directory and contact lifecycle management system engineered in Python. It replaces 
+traditional flat-file phonebooks with a robust relational architecture designed to 
+store, organize, query, and preserve personal and professional contact information 
+with high reliability and data integrity.
+
+Key Capabilities and Functional Workflow:
+1. Contact Lifecycle Management:
+   Enables complete CRUD (Create, Read, Update, Delete) operations for contact 
+   records, encapsulating full name, primary phone number, secondary phone numbers 
+   with customizable contextual tags (e.g., Work, Home, Mobile, Other), email 
+   addresses, physical addresses, notes, and priority flags (Favourites and 
+   Emergency Contacts).
+
+2. Multi-Attribute Real-Time Search & Retrieval:
+   Implements multi-column case-insensitive filtering across contact names, 
+   primary phone numbers, secondary phone numbers, and email addresses.
+
+3. Categorization & Many-to-Many Grouping:
+   Supports custom organizational groups (e.g., Family, Friends, Work, College) 
+   using relational junction tables, allowing contacts to belong to multiple groups 
+   simultaneously without data redundancy.
+
+4. Speed Dial & Quick Access:
+   Provides a dedicated 9-slot fixed indexing system (Slots 1–9) for instant 
+   telephonic access and priority dialing.
+
+5. Data Protection & Soft-Deletion (Recycle Bin):
+   Implements a two-tier deletion mechanism. Deleted records are initially 
+   soft-deleted into a Trash repository, preserving relationships and secondary 
+   data for seamless recovery, while offering permanent purge capabilities with 
+   referential cascade cleanup.
+
+6. Data Portability & Disaster Recovery:
+   Features RFC 4180-compliant CSV import/export with UTF-8 BOM encoding for 
+   Microsoft Excel interoperability, intelligent header parsing, row-by-row regex 
+   validation, and duplicate prevention. Includes online atomic database snapshots 
+   via the SQLite Backup API and safe restorations verified by SQLite integrity 
+   checks and pre-restore rollback copies.
+
+
+SOFTWARE USED :
+--------------------------------------------------------------------------------
+1. Core Programming Language:
+   - Python 3.10+ (Standard Runtime Environment)
+   - Adheres to modern Python object-oriented programming standards, type hinting, 
+     and PEP 8 conventions.
+
+2. Graphical User Interface (GUI) Framework:
+   - Tkinter: Standard Python interface to the Tk GUI toolkit for windowing, 
+     event dispatching, canvas graphics, and frame management.
+   - Ttk (Themed Tkinter): Advanced themed widget library providing native-styled 
+     controls, sortable multi-column Treeview tables, and custom style mappings.
+
+3. Database Management System (DBMS):
+   - SQLite 3 (via standard library 'sqlite3' driver)
+   - Self-contained, serverless, zero-configuration transactional SQL database 
+     engine operating directly on disk with ACID compliance and foreign key 
+     enforcement.
+
+4. Standard Library Modules & Utilities:
+   - 're': Regular expression engine for syntactic validation of phone numbers 
+     and email addresses using compiled finite automata.
+   - 'dataclasses': Type-annotated data transfer models (Contact, PhoneNumber, Group) 
+     for clean memory abstraction.
+   - 'csv': RFC 4180-compliant streaming parser and writer for contact portability.
+   - 'os' & 'sys': Operating system interfacing, cross-platform path resolution, 
+     and directory bootstrapping.
+   - 'datetime': Timestamp generation for activity logging, audit trails, and 
+     backup naming.
+
+5. Operating System Compatibility:
+   - Cross-platform support across Microsoft Windows 10/11, macOS, and Linux.
+
+
+DATA STRUCTURES USED :
+--------------------------------------------------------------------------------
+1. In-Memory Primitive & Linear Data Structures:
+   - Dynamic Arrays / Lists (Python 'list'):
+     * Utilized for storing query result sets, collections of Contact objects, 
+       table row data in ttk.Treeview, dynamic secondary phone lists, and batch 
+       CSV processing rows.
+     * Complexity: O(1) amortized insertion, O(n) linear search/iteration.
+
+   - Associative Arrays / Hash Tables (Python 'dict'):
+     * Employed for UI theme palettes, font configurations, page navigation 
+       routing tables, application settings cache, SQLite row-to-object mappings, 
+       and case-insensitive CSV header alias matching.
+     * Complexity: Average O(1) key lookup, insertion, and deletion.
+
+   - Tuples (Python 'tuple'):
+     * Applied for immutable SQL query parameter bindings, coordinate specifications, 
+       Treeview column schema definitions, and atomic return pairs (bool, message).
+     * Complexity: O(1) indexed access with memory compaction and immutability.
+
+   - Hash Sets (Python 'set'):
+     * Leveraged for O(1) membership testing, duplicate elimination in batch 
+       imports, and cluster identification during duplicate contact analysis.
+     * Complexity: Average O(1) lookup and insertion.
+
+   - Structured Records / Dataclasses ('@dataclass'):
+     * Memory-efficient record encapsulation for domain models ('Contact', 
+       'PhoneNumber', 'Group') combining type annotations with field factories.
+
+2. Disk-Based Hierarchical & Indexing Data Structures:
+   - B-Tree and B+Tree Structures (SQLite Storage Engine):
+     * SQLite organizes database tables and index structures on disk as B-Trees 
+       and B+Trees. All table primary keys ('INTEGER PRIMARY KEY') utilize 
+       B-Tree indexing to ensure logarithmic search, insertion, and update 
+       times for fast contact retrieval.
+     * Complexity: O(log N) lookup, insertion, and deletion on disk.
+
+   - Relational Junction Table / Edge-List Graph Structure:
+     * The 'contact_groups' table implements an edge-list representation of a 
+       bipartite graph connecting Contact vertices and Group vertices with 
+       composite primary keys (contact_id, group_id).
+     * Enforces referential integrity with CASCADE constraints upon node deletion.
+
+   - Fixed-Size Indexed Map (Speed Dial):
+     * Implements a bounded indexed array structure mapped across keys 1 through 9 
+       to guarantee direct O(1) access to critical priority telephone contacts.
+
+3. User Interface Hierarchical Structures:
+   - Multi-Column Tree Structure (ttk.Treeview):
+     * Hierarchical display structure managing tabular records with internal 
+       item identifiers, column mappings, sorting state vectors, and event bindings.
+
+   - Widget Hierarchy Tree:
+     * Represents the graphical display as a directed acyclic tree of UI widgets 
+       rooted at the top-level window (tk.Tk), cascading through navigation frames, 
+       canvases, cards, and child control leaves.
+
+4. Algorithmic & Automata Structures:
+   - Finite Automata (Regular Expressions):
+     * Deterministic/Non-deterministic Finite Automata (DFA/NFA) generated via 
+       compiled regular expressions for syntactic validation of telephone numbers 
+       and RFC-compliant email formats.
+
+   - FIFO / LIFO Sequential Activity Sequences:
+     * Ordered timeline queues for audit logging ('activity_logs') and bounded 
+       recently viewed contact tracking.
+================================================================================
